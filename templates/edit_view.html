@@ -1,0 +1,146 @@
+<html>
+    <head>
+        <title>Menu</title>
+        <style>
+            table,tr,td,th{
+                border: solid 1px black;
+                border-collapse: collapse;
+            }
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+                }
+
+                li {
+                float: left;
+                }
+
+                li a {
+                display: block;
+                color: white;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+                }
+
+                /* Change the link color to #111 (black) on hover */
+                li a:hover {
+                background-color: #111;
+                }
+                .active {
+                background-color: #04AA6D;
+                }
+                .additional-options{
+                    display:none;
+                }
+        </style>
+    </head>
+    <body>
+        <!-- Header -->
+        <ul> 
+            <li><a href="/createPO">Create PO</a></li>
+            <li><a href="/viewPOs">View POs</a></li>
+            <li><a href="/add">Add Products</a></li>
+            <li class="active"><a href="/edit">Edit Products</a></li>
+            <li><a href="/summary">Summaries</a></li>
+        </ul>
+
+
+        <!-- Choose from either product or hampers -->
+        <label>
+            <input type="radio" name="product-type" value="product" onclick="showOptions('product')"> Product
+        </label>
+        <label>
+            <input type="radio" name="product-type" value="hampers" onclick="showOptions('hampers')"> Hampers
+        </label>
+
+        <!-- Table for product -->
+        <div class="additional-options" id="product-options">
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Normal Price</th>
+                    <th>Retail Price</th>
+                    <th></th>
+                </tr>
+                {% for product in productsList %}
+                <tr>
+                    <td>{{product['name']}}</td>
+                    <td>{{"Rp{:,.2f}".format(product['price'])}}</td>
+                    <td>{{"Rp{:,.2f}".format(product['retail_price'])}}</td>
+                    <td>
+                        <a href="/edit_product/{{product['_id']}}">Edit</a>
+                        <a href="/delete_product/{{product['_id']}}">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+
+        <!-- Table for hampers -->
+        <div class="additional-options" id="hampers-options">
+            <table id="hamperTable">
+                <thead>
+                    <tr>
+                        <th>Hamper Name</th>
+                        <th>Product Name</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hamper in hampersList %}
+                    {% for item in hamper['items'] %}
+                        <tr>
+                            <td>
+                                {{ hamper.name }} <br>
+                                <a href="/edit_hampers/{{hamper['_id']}}">Edit</a>
+                                <a href="/delete_hampers/{{hamper['_id']}}">Delete</a>
+                            </td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                        </tr>
+                    {% endfor %}
+                    <tr>
+                        <td colspan="3" style="text-align: right;"> Price: {{hamper['price']}} </td>
+                    </tr>
+                    <tr>
+                        <td colspan="3" style="text-align: right;"> Retail Price: {{hamper['retail_price']}} </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+    </body>
+    <script>
+        function showOptions(productType) {
+                // Hide all additional options initially
+                document.querySelectorAll('.additional-options').forEach(function(option) {
+                    option.style.display = 'none';
+                });
+        
+                // Show options based on the selected gender
+                document.getElementById(productType + '-options').style.display = 'block';
+            }
+        function combineCells() {
+            const table = document.getElementById('hamperTable');
+
+            let headerCell = null;
+
+            for (let row of table.rows) {
+            const firstCell = row.cells[0];
+            
+            if (headerCell === null || firstCell.innerText !== headerCell.innerText) {
+                headerCell = firstCell;
+            } else {
+                headerCell.rowSpan++;
+                firstCell.remove();
+            }
+            }
+        };
+        window.onload = combineCells;
+    </script>
+</html>

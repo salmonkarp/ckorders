@@ -1,0 +1,57 @@
+<html>
+    <head>
+        <title>Menu</title>
+        <style>
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+                }
+
+                li {
+                float: left;
+                }
+
+                li a {
+                display: block;
+                color: white;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+                }
+
+                /* Change the link color to #111 (black) on hover */
+                li a:hover {
+                background-color: #111;
+                }
+        </style>
+    </head>
+    <body>
+        <ul>
+            <li><a href="/createPO">Create PO</a></li>
+            <li><a href="/viewPOs">View POs</a></li>
+            <li><a href="/add">Add Products</a></li>
+            <li><a href="/edit">Edit Products</a></li>
+            <li><a href="/summary">Summaries</a></li>
+        </ul>
+        <form action="/edit_product_submit/{{product['_id']}}" method="post" enctype="multipart/form-data">
+            <div id="product-options">
+                <label>
+                    Product Name <input type="text" name="name" value="{{product['name']}}">
+                </label>
+                <br>
+                <label>
+                    Normal Price <input type="text" name="price" value="{{product['price']}}">
+                </label>
+                <br>
+                <label>
+                    Retail Price <input type="text" name="retail_price" value="{{product['retail_price']}}">
+                </label>
+                <br>
+                <button type="submit">Submit</button>
+            </div>
+        </form>
+    </body>
+</html>

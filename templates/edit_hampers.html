@@ -1,0 +1,76 @@
+<html>
+    <head>
+        <title>Menu</title>
+        <style>
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+                }
+
+                li {
+                float: left;
+                }
+
+                li a {
+                display: block;
+                color: white;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+                }
+                
+                .active {
+                background-color: #04AA6D;
+                }
+                
+                /* Change the link color to #111 (black) on hover */
+                li a:hover {
+                background-color: #111;
+                }
+
+                .product-option{
+                    float:none;
+                    background-color: #ababab;
+                }
+        </style>
+    </head>
+    <body>
+        <ul>
+            <li><a href="/createPO">Create PO</a></li>
+            <li><a href="/viewPOs">View POs</a></li>
+            <li><a href="/add">Add Products</a></li>
+            <li><a href="/edit">Edit Products</a></li>
+            <li><a href="/summary">Summaries</a></li>
+        </ul>
+        <form action="/edit_hampers_submit/{{hamper['_id']}}" method="post" enctype="multipart/form-data">
+            <div id="product-options">
+                <label>
+                    Hampers Name <input type="text" name="hname" value="{{hamper['name']}}">
+                </label>
+                <br>
+                <ul id="product-list" style="list-style-type: none; padding: 0;">
+                    {% for product in productsList %}
+                        <li class="product-option">
+                            <label for="product_{{ product._id }}">{{ product.name }}</label>
+                            <input type="number" name="quantity_{{ product._id }}" class="quantity-input" placeholder="Quantity" value="{{QuantDict[product._id]}}">
+                        </li>
+                    {% endfor %}
+                </ul><br>
+                <label>
+                    Normal Price <input type="text" name="hprice" value="{{hamper['price']}}">
+                </label>
+                <br>
+                <label>
+                    Retail Price <input type="text" name="hretail_price" value="{{hamper['retail_price']}}">
+                </label>
+                <br>
+                <input type="submit"></input>
+            </div>
+        </form>
+    </body>
+    <script>
+    </script>
+</html>

@@ -1,0 +1,140 @@
+<html>
+    <head>
+        <title>Create PO</title>
+        <style>
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+                }
+
+                li {
+                float: left;
+                }
+
+                li a {
+                display: block;
+                color: white;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+                }
+
+                /* Change the link color to #111 (black) on hover */
+                li a:hover {
+                background-color: #111;
+                }
+                .active {
+                background-color: #04AA6D;
+                }
+                .center_form{
+                    width: 50%;
+                    margin: auto;
+                    background-color: #cccaca;
+                }
+                .product-option{
+                    float:none;
+                    background-color: #ababab;
+                }
+        </style>
+    </head>
+    <body>
+        <ul>
+            <li><a href="/createPO" class="active">Create PO</a></li>
+            <li><a href="/viewPOs">View POs</a></li>
+            <li><a href="/add">Add Products</a></li>
+            <li><a href="/edit">Edit Products</a></li>
+            <li><a href="/summary">Summaries</a></li>
+        </ul>
+        <form action="/createPOSubmit" enctype="multipart/form-data" method="post">
+            <div class="center_form">
+                <h3>Create PO</h3>
+
+                <!-- New Customer Option -->
+                <label for="customer_name">Customer Name:</label>
+                <input type="text" name="customer_name">
+                <label for="address">Delivery Address:</label>
+                <input type="text" name="address">
+                
+                <p>OR</p>
+
+                <!-- Existing Customer Option -->
+                <label for="existing_customer_id">Select existing customer:</label>
+                <select name="existing_customer_id">
+                    <option value="">-- Select existing customer --</option>
+                    {% for customer in customersList %}
+                        <option value="{{ customer._id }}">{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+                <br>
+                
+                <!-- Date of delivery -->
+                <label for="delivery_date">Date of delivery:</label>
+                <input type="date" name="delivery_date" value="{{current_date}}" required>
+                <br>
+
+                <!-- Input of products -->
+                <p>Select products:</p>
+                <ul id="product-list" style="list-style-type: none; padding: 0;">
+                    {% for product in productsList %}
+                        <li class="product-option">
+                            <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
+                            <label for="product_{{ product._id }}">{{ product.name }}</label>
+                            <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" placeholder="Quantity" style="display: none;">
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <!-- Input of hampers -->
+                <p>Select hampers:</p>
+                <ul id="hampers-list" style="list-style-type: none; padding: 0;">
+                    {% for hamper in hampersList %}
+                        <li class="product-option">
+                            <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" id="hamper_{{ hamper._id }}">
+                            <label for="hamper{{ hamper._id }}">{{ hamper.name }}</label>
+                            <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" placeholder="Quantity" style="display: none;">
+                        </li>
+                    {% endfor %}
+                </ul><br>
+
+                <input type="submit" value="Create PO">
+            </div>
+        </form>
+    </body>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+                var productList = document.getElementById('product-list');
+                var hamperList = document.getElementById('hampers-list');
+
+                productList.addEventListener('change', function (event) {
+                    var target = event.target;
+
+                    if (target.type === 'checkbox') {
+                        var quantityInput = target.parentElement.querySelector('.quantity-input');
+
+                        if (target.checked) {
+                            quantityInput.style.display = 'inline-block';
+                        } else {
+                            quantityInput.style.display = 'none';
+                        }
+                    }
+                });
+
+                hamperList.addEventListener('change', function (event) {
+                    var target = event.target;
+
+                    if (target.type === 'checkbox') {
+                        var quantityInput = target.parentElement.querySelector('.quantity-input');
+
+                        if (target.checked) {
+                            quantityInput.style.display = 'inline-block';
+                        } else {
+                            quantityInput.style.display = 'none';
+                        }
+                    }
+                });
+            });
+    </script>
+</html>

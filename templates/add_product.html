@@ -1,0 +1,143 @@
+<html>
+    <head>
+        <!-- Include Select2 from CDN -->
+        <title>Add Product</title>
+        <style>
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+                }
+
+            li {
+            float: left;
+            }
+
+            li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            }
+
+            /* Change the link color to #111 (black) on hover */
+            li a:hover {
+            background-color: #111;
+            }
+
+            .active {
+            background-color: #04AA6D;
+            }
+
+            .center_form{
+                width: 50%;
+                margin: auto;
+                background-color: #cccaca;
+            }
+
+            .additional-options{
+                display:none;
+            }
+
+            .product-option{
+                float:none;
+                background-color: #ababab;
+            }
+        </style>
+    </head>
+    <body>
+        <ul>
+            <li><a href="/createPO">Create PO</a></li>
+            <li><a href="/viewPOs">View POs</a></li>
+            <li class="active"><a href="/add">Add Products</a></li>
+            <li><a href="/edit">Edit Products</a></li>
+            <li><a href="/summary">Summaries</a></li>
+        </ul>
+        <form action="/submit_addition" method="post" enctype="multipart/form-data">
+            <div class="center_form">
+                <!-- Choose from either product or hampers -->
+                <label>
+                    <input type="radio" name="product-type" value="product" onclick="showOptions('product')"> Product
+                </label>
+                <label>
+                    <input type="radio" name="product-type" value="hampers" onclick="showOptions('hampers')"> Hampers
+                </label>
+
+                <!-- Inputs for product -->
+                <div class="additional-options" id="product-options">
+                    <label>
+                        Product Name <input type="text" name="name">
+                    </label>
+                    <br>
+                    <label>
+                        Normal Price <input type="text" name="price">
+                    </label>
+                    <br>
+                    <label>
+                        Retail Price <input type="text" name="retail_price">
+                    </label>
+                    <br>
+                    <button type="submit">Submit</button>
+                </div>
+
+                <!-- Inputs for hampers -->
+                <div class="additional-options" id="hampers-options">
+                    <label>
+                        Hampers Name<input type="text" name="hname">
+                    </label>
+                    <br>
+                    <ul id="product-list" style="list-style-type: none; padding: 0;">
+                        {% for product in productsList %}
+                            <li class="product-option">
+                                <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
+                                <label for="product_{{ product._id }}">{{ product.name }}</label>
+                                <input type="number" name="quantities_{{ product._id }}" class="quantity-input" placeholder="Quantity" style="display: none;">
+                            </li>
+                        {% endfor %}
+                    </ul><br>
+                    <label>
+                        Normal Price <input type="text" name="hprice">
+                    </label>
+                    <br>
+                    <label>
+                        Retail Price <input type="text" name="hretail_price">
+                    </label>
+                    <input type="submit"></input>
+                </div>
+            </div>
+        </form>
+
+        
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var productList = document.getElementById('product-list');
+
+                productList.addEventListener('change', function (event) {
+                    var target = event.target;
+
+                    if (target.type === 'checkbox') {
+                        var quantityInput = target.parentElement.querySelector('.quantity-input');
+
+                        if (target.checked) {
+                            quantityInput.style.display = 'inline-block';
+                        } else {
+                            quantityInput.style.display = 'none';
+                        }
+                    }
+                });
+            });
+            function showOptions(productType) {
+                // Hide all additional options initially
+                document.querySelectorAll('.additional-options').forEach(function(option) {
+                    option.style.display = 'none';
+                });
+        
+                // Show options based on the selected gender
+                document.getElementById(productType + '-options').style.display = 'block';
+            }
+        </script>
+    </body>
+</html>
