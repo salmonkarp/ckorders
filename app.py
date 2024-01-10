@@ -22,7 +22,10 @@ def open_DB(db):
 
 # object creation
 app = Flask(__name__)
-MClient = pymongo.MongoClient("mongodb+srv://salmonkarp:ESkMTNgD4383kC9@cookieskingdomdb.gq6eh6v.mongodb.net/")['CK']
+database_key = os.environ["MONGOKEY"]
+MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
+print(MCString)
+MClient = pymongo.MongoClient(MCString)['CK']
 CORS(app)  # Enable CORS for all routes and origins
 
 # Configure FLASK_DEBUG from environment variable

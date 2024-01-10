@@ -30,13 +30,17 @@
                 background-color: #04AA6D;
                 }
                 .center_form{
-                    width: 50%;
+                    width: 30%;
                     margin: auto;
                     background-color: #cccaca;
+                    padding: 10px 10px 10px 10px;
                 }
                 .product-option{
                     float:none;
                     background-color: #ababab;
+                }
+                .additional-options{
+                    display: none;
                 }
         </style>
     </head>
@@ -50,24 +54,34 @@
         </ul>
         <form action="/createPOSubmit" enctype="multipart/form-data" method="post">
             <div class="center_form">
-                <h3>Create PO</h3>
+                <p>Create PO</p>
+
+                <!-- Choose from either product or hampers -->
+                <label>
+                    <input type="radio" name="customer-type" value="new" onclick="showOptions('new')"> New Customer
+                </label>
+                <label>
+                    <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')"> Existing Customer
+                </label> <br>
 
                 <!-- New Customer Option -->
-                <label for="customer_name">Customer Name:</label>
-                <input type="text" name="customer_name">
-                <label for="address">Delivery Address:</label>
-                <input type="text" name="address">
-                
-                <p>OR</p>
+                <div class="additional-options" id="new-options">
+                    <label for="customer_name">Customer Name:</label>
+                    <input type="text" name="customer_name"> <br>
+                    <label for="address">Delivery Address:</label>
+                    <input type="text" name="address">
+                </div>
 
                 <!-- Existing Customer Option -->
-                <label for="existing_customer_id">Select existing customer:</label>
-                <select name="existing_customer_id">
-                    <option value="">-- Select existing customer --</option>
-                    {% for customer in customersList %}
-                        <option value="{{ customer._id }}">{{ customer.name }}</option>
-                    {% endfor %}
-                </select>
+                <div class="additional-options" id="existing-options">
+                    <label for="existing_customer_id">Select existing customer:</label>
+                    <select name="existing_customer_id">
+                        <option value="">-- Select existing customer --</option>
+                        {% for customer in customersList %}
+                            <option value="{{ customer._id }}">{{ customer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <br>
                 
                 <!-- Date of delivery -->
@@ -80,9 +94,23 @@
                 <ul id="product-list" style="list-style-type: none; padding: 0;">
                     {% for product in productsList %}
                         <li class="product-option">
-                            <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
+                            <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}" onclick="showOptions('selected')">
                             <label for="product_{{ product._id }}">{{ product.name }}</label>
-                            <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" placeholder="Quantity" style="display: none;">
+                            <br>
+                            
+                            <div class="additional-options" id="selected-options">
+                                <label>Quantity: </label>
+                                <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;">
+                                <br>
+                                <input type="radio" id="{{ product._id }}_normal_price" name="{{ product._id }}_price_type" value="normal">
+                                <label for="{{ product._id }}_normal_price">Normal Price: ${{ product.price }}</label>
+                                <br>
+
+                                <input type="radio" id="{{ product._id }}_custom_price" name="{{ product._id }}_price_type" value="custom">
+                                <label for="{{ product._id }}_custom_price">Custom Price:</label>
+                                <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" placeholder="0.000"><br>
+                            
+                            </div>
                         </li>
                     {% endfor %}
                 </ul>
@@ -104,6 +132,18 @@
         </form>
     </body>
     <script>
+        // to show options of new or existin customer
+        function showOptions(customerType) {
+                // Hide all additional options initially
+                document.querySelectorAll('.additional-options').forEach(function(option) {
+                    option.style.display = 'none';
+                });
+        
+                // Show options based on the selected gender
+                document.getElementById(customerType + '-options').style.display = 'block';
+            }
+
+        // to show Quantity inputs based on checkboxes
         document.addEventListener('DOMContentLoaded', function () {
                 var productList = document.getElementById('product-list');
                 var hamperList = document.getElementById('hampers-list');
