@@ -10,38 +10,43 @@
                 background-color: #333;
                 }
 
-                li {
-                float: left;
-                }
+            li {
+            float: left;
+            }
 
-                li a {
-                display: block;
-                color: white;
-                text-align: center;
-                padding: 14px 16px;
-                text-decoration: none;
-                }
+            li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            }
 
-                /* Change the link color to #111 (black) on hover */
-                li a:hover {
-                background-color: #111;
-                }
-                .active {
-                background-color: #04AA6D;
-                }
-                .center_form{
-                    width: 30%;
-                    margin: auto;
-                    background-color: #cccaca;
-                    padding: 10px 10px 10px 10px;
-                }
-                .product-option{
-                    float:none;
-                    background-color: #ababab;
-                }
-                .additional-options{
-                    display: none;
-                }
+            /* Change the link color to #111 (black) on hover */
+            li a:hover {
+            background-color: #111;
+            }
+            .active {
+            background-color: #04AA6D;
+            }
+            .center_form{
+                width: 30%;
+                margin: auto;
+                margin-top: 20px;
+                background-color: #cccaca;
+                padding: 10px 10px 10px 10px;
+            }
+            .product-option{
+                float:none;
+                background-color: #ababab;
+            }
+            .additional-options{
+                display: none;
+            }
+            .hiddenDiv{
+                display:none;
+                padding-left: 50px;
+            }
         </style>
     </head>
     <body>
@@ -58,10 +63,10 @@
 
                 <!-- Choose from either product or hampers -->
                 <label>
-                    <input type="radio" name="customer-type" value="new" onclick="showOptions('new')"> New Customer
+                    <input type="radio" name="customer-type" value="new" onclick="showOptions('new')" required> New Customer
                 </label>
                 <label>
-                    <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')"> Existing Customer
+                    <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')" required> Existing Customer
                 </label> <br>
 
                 <!-- New Customer Option -->
@@ -94,21 +99,21 @@
                 <ul id="product-list" style="list-style-type: none; padding: 0;">
                     {% for product in productsList %}
                         <li class="product-option">
-                            <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}" onclick="showOptions('selected')">
+                            <input type="checkbox" name="products[]" value="{{ product._id }}" class="checkboxClass" onchange="toggleDiv(this)">
                             <label for="product_{{ product._id }}">{{ product.name }}</label>
                             <br>
                             
-                            <div class="additional-options" id="selected-options">
+                            <div class="hiddenDiv">
                                 <label>Quantity: </label>
-                                <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;">
+                                <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input">
                                 <br>
                                 <input type="radio" id="{{ product._id }}_normal_price" name="{{ product._id }}_price_type" value="normal">
-                                <label for="{{ product._id }}_normal_price">Normal Price: ${{ product.price }}</label>
+                                <label for="{{ product._id }}_normal_price">Normal Price: Rp{{ product.price }}</label>
                                 <br>
 
                                 <input type="radio" id="{{ product._id }}_custom_price" name="{{ product._id }}_price_type" value="custom">
                                 <label for="{{ product._id }}_custom_price">Custom Price:</label>
-                                <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" placeholder="0.000"><br>
+                                <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price"><br>
                             
                             </div>
                         </li>
@@ -120,9 +125,23 @@
                 <ul id="hampers-list" style="list-style-type: none; padding: 0;">
                     {% for hamper in hampersList %}
                         <li class="product-option">
-                            <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" id="hamper_{{ hamper._id }}">
-                            <label for="hamper{{ hamper._id }}">{{ hamper.name }}</label>
-                            <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" placeholder="Quantity" style="display: none;">
+                            <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" class="checkboxClass" onchange="toggleDiv(this)">
+                            <label for="hamper_{{ hamper._id }}">{{ hamper.name }}</label>
+                            <br>
+                            
+                            <div class="hiddenDiv">
+                                <label>Quantity: </label>
+                                <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input">
+                                <br>
+                                <input type="radio" id="{{ hamper._id }}_normal_price" name="{{ hamper._id }}_price_type" value="normal">
+                                <label for="{{ hamper._id }}_normal_price">Normal Price: Rp{{ hamper.price }}</label>
+                                <br>
+
+                                <input type="radio" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_price_type" value="custom">
+                                <label for="{{ hamper._id }}_custom_price">Custom Price:</label>
+                                <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price"><br>
+                            
+                            </div>
                         </li>
                     {% endfor %}
                 </ul><br>
@@ -132,7 +151,7 @@
         </form>
     </body>
     <script>
-        // to show options of new or existin customer
+        // to show options of new or existing customer
         function showOptions(customerType) {
                 // Hide all additional options initially
                 document.querySelectorAll('.additional-options').forEach(function(option) {
@@ -144,37 +163,15 @@
             }
 
         // to show Quantity inputs based on checkboxes
-        document.addEventListener('DOMContentLoaded', function () {
-                var productList = document.getElementById('product-list');
-                var hamperList = document.getElementById('hampers-list');
+        function toggleDiv(checkbox) {
+            var index = Array.from(document.getElementsByClassName('checkboxClass')).indexOf(checkbox);
+            var divs = document.getElementsByClassName('hiddenDiv');
 
-                productList.addEventListener('change', function (event) {
-                    var target = event.target;
-
-                    if (target.type === 'checkbox') {
-                        var quantityInput = target.parentElement.querySelector('.quantity-input');
-
-                        if (target.checked) {
-                            quantityInput.style.display = 'inline-block';
-                        } else {
-                            quantityInput.style.display = 'none';
-                        }
-                    }
-                });
-
-                hamperList.addEventListener('change', function (event) {
-                    var target = event.target;
-
-                    if (target.type === 'checkbox') {
-                        var quantityInput = target.parentElement.querySelector('.quantity-input');
-
-                        if (target.checked) {
-                            quantityInput.style.display = 'inline-block';
-                        } else {
-                            quantityInput.style.display = 'none';
-                        }
-                    }
-                });
-            });
+            if (checkbox.checked) {
+                divs[index].style.display = 'block';
+            } else {
+                divs[index].style.display = 'none';
+            }
+        }
     </script>
 </html>

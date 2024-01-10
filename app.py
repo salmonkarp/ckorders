@@ -210,6 +210,8 @@ def createPO():
 
 @app.route("/createPOSubmit",methods=["POST"])
 def createPOSubmit():
+    
+    #handling customers
     existingCustomerID = request.form.get('existing_customer_id')
     if existingCustomerID:
         custID = ObjectId(existingCustomerID)
@@ -224,10 +226,14 @@ def createPOSubmit():
         })
         custID = ckCustomers.find_one({'name':custName,'address':address})['_id']
 
+    #handling date
     deliveryDate = request.form.get('delivery_date')
+    
+    #taking products and hampers list
     selected_products = request.form.getlist('products[]')
     selected_hampers = request.form.getlist('hampers[]')
     
+    #creating basic order object
     OrderObject = {
         'custID':custID,
         'deliveryDate':deliveryDate,
@@ -235,39 +241,57 @@ def createPOSubmit():
         'hampers':[]
     }
 
+    #adding products
     for product_id in selected_products:
         quantity_key = 'p_quantities_' + product_id
         quantity = int(request.form.get(quantity_key, 0))
-        
-        if quantity > 0:
+        cutstom_price_key = product_id + "_custom_price"
+        custom_price = request.form.get(cutstom_price_key, 0)
+        if quantity > 0 and custom_price:
             OrderObject['products'].append({
                 'product_id': ObjectId(product_id),
-                'quantity': quantity
+                'quantity': quantity,
+                'price':custom_price
+            })
+        elif quantity > 0:
+            OrderObject['products'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
             })
 
+    #adding hampers
     for product_id in selected_hampers:
         quantity_key = 'h_quantities_' + product_id
         quantity = int(request.form.get(quantity_key, 0))
+        cutstom_price_key = product_id + "_custom_price"
+        custom_price = request.form.get(cutstom_price_key, 0)
         
-        if quantity > 0:
+        if quantity > 0 and custom_price:
             OrderObject['hampers'].append({
                 'product_id': ObjectId(product_id),
-                'quantity': quantity
+                'quantity': quantity,
+                'custom_price':float(custom_price)
+            })
+        elif quantity > 0:
+            OrderObject['hampers'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
             })
 
     ckPOs = MClient['POs']
     ckPOs.insert_one(OrderObject)
 
     print(OrderObject)
-    return redirect('/')
+    return redirect('/viewPOs')
 
 @app.route("/viewPOs",methods=["GET"])
 def viewPOs():
-    POData = MClient['POs']
-    HampersData = list(MClient['Hampers'].find())
-    ProductsData = list(MClient['Products'].find())
-    CustomersData = list(MClient['Customers'].find())
+    return redirect('/lookup/2023-1-27')
 
+@app.route("/lookup/<requestDate>",methods=["GET"])
+def lookup(requestDate):
+    print(requestDate)
+    POData = MClient['POs']
     FinalData = {}
     pipeline = [
         {
@@ -282,22 +306,6 @@ def viewPOs():
             }
         },
         {
-            '$unwind': '$product_details'
-        },
-        {
-            '$group': {
-                '_id': '$_id',
-                'order_id': {'$first': '$_id'},
-                'custID': {'$first': '$custID'},
-                'deliveryDate': {'$first': '$deliveryDate'},
-                'products': {'$push': {
-                    'product_id': '$products.product_id',
-                    'quantity': '$products.quantity',
-                    'name': '$product_details.name',  # Assuming 'name' is a field in the 'items' collection
-                }}
-            }
-        },
-        {
             '$unwind': '$hampers'
         },
         {
@@ -309,20 +317,28 @@ def viewPOs():
             }
         },
         {
-            '$unwind': '$hamper_details'
+        "$lookup": {
+                "from": "Customers",
+                "localField": "custID",
+                "foreignField": "_id",
+                "as": "customer_details"
+            }
         },
         {
             '$group': {
                 '_id': '$_id',
                 'order_id': {'$first': '$_id'},
-                'custID': {'$first': '$custID'},
+                'customer_name': {"$first": {"$arrayElemAt": ["$customer_details.name", 0]}},
                 'deliveryDate': {'$first': '$deliveryDate'},
-                'products': {'$first': '$products'},
-                'hampers': {'$push': {
-                    'product_id': '$hampers.product_id',
-                    'quantity': '$hampers.quantity',
-                    'name': '$hamper_details.name',  # Assuming 'name' is a field in the 'items' collection
-                }}
+                "products": {"$addToSet": {
+                    "name": {"$arrayElemAt": ["$product_details.name", 0]}, 
+                    "price": {"$ifNull": ["$products.custom_price", {"$arrayElemAt": ["$product_details.price", 0]}]},
+                    "quantity": "$products.quantity"
+                    }},
+                "hampers": {"$addToSet": {
+                    "name": {"$arrayElemAt": ["$hamper_details.name", 0]}, 
+                    "price": {"$ifNull": ["$hampers.custom_price", {"$arrayElemAt": ["$hamper_details.price", 0]}]},
+                    "quantity": "$hampers.quantity"}}
             }
         }
     ]
