@@ -64,7 +64,9 @@
                 <p>Edit PO</p>
 
                 <!-- Existing Customer Data -->
-                <p>Customer Name: {{ customer_name }} <br>
+                <p>
+                    Order ID: {{ order_data['_id'] }} <br>
+                    Customer Name: {{ customer_name }} <br>
                     Delivery Date: {{ order_data['deliveryDate'] }}
                 </p>
                 <input type="hidden" name="orderId" value="{{ order_data._id }}">
