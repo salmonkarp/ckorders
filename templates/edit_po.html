@@ -53,23 +53,31 @@
     </head>
     <body>
         <ul>
-            <li><a href="/createPO" class="active">Create PO</a></li>
+            <li><a href="/createPO">Create PO</a></li>
             <li><a href="/viewPOs">View POs</a></li>
             <li><a href="/add">Add Products</a></li>
             <li><a href="/edit">Edit Products</a></li>
             <li><a href="/summary">Summaries</a></li>
         </ul>
-        <form action="/createPOSubmit" enctype="multipart/form-data" method="post">
+        <form action="/edit_po_submit" enctype="multipart/form-data" method="post">
             <div class="center_form">
                 <p>Edit PO</p>
 
                 <!-- Existing Customer Data -->
                 <p>
                     Order ID: {{ order_data['_id'] }} <br>
-                    Customer Name: {{ customer_name }} <br>
-                    Delivery Date: {{ order_data['deliveryDate'] }}
                 </p>
-                <input type="hidden" name="orderId" value="{{ order_data._id }}">
+                <input type="hidden" name="orderID" value="{{ order_data._id }}">
+
+                <!-- Customer Stuff -->
+                <input type="hidden" name="custID" value="{{ customer_data._id }}">
+                <label>Customer Name</label>
+                <input type="text" name="customer_name" value="{{ customer_data.name }}"> <br>
+                <label>Customer Address</label>
+                <input type="text" name="customer_address" value="{{ customer_data.address }}"> <br>
+                
+                <label>Delivery Date</label>
+                <input type="date" name="deliveryDate" value="{{ order_data.deliveryDate }}">
                 
                 <!-- Input of products -->
                 <p>Select products:</p>

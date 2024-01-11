@@ -62,6 +62,7 @@ pipeline = [
                 '_id': '$_id',
                 'order_id': {'$first': '$_id'},
                 'customer_name': {"$first": {"$arrayElemAt": ["$customer_details.name", 0]}},
+                'customer_address': {"$first": {"$arrayElemAt": ["$customer_details.address", 0]}},
                 'deliveryDate': {'$first': '$deliveryDate'},
                 "products": {"$addToSet": {
                     "name": {"$arrayElemAt": ["$product_details.name", 0]}, 
@@ -120,7 +121,6 @@ def add_submit():
             new_product = {
                 'name': request.form.get('name'),
                 'price': float(request.form.get('price')),
-                'retail_price': float(request.form.get('retail_price'))
             }
             ckProducts.insert_one(new_product)
             return redirect('/')
@@ -133,7 +133,6 @@ def add_submit():
             hamper = {
                 'name': hamper_name,
                 'price': float(request.form.get('hprice')),
-                'retail_price': float(request.form.get('hretail_price')),
                 'items': []
             }
 
@@ -191,7 +190,6 @@ def edit_product_submit(productID):
         '$set':{
             'name':request.form.get('name'),
             'price': float(request.form.get('price')),
-            'retail_price': float(request.form.get('retail_price'))
         }
     })
     return redirect('/')
@@ -231,7 +229,6 @@ def edit_hampers_submit(hampersID):
     hamper = {
         'name': hamper_name,
         'price': float(request.form.get('hprice')),
-        'retail_price': float(request.form.get('hretail_price')),
         'items': []
     }
 
@@ -377,7 +374,7 @@ def lookup():
                 }
             }] + pipeline
     
-    print(cust_pipeline)
+    # print(cust_pipeline)
     orders_data = list(POData.aggregate(cust_pipeline))
     print(len(orders_data))
     print(len(list(POData.find())))
@@ -400,7 +397,7 @@ def edit_po(poID):
     order_data = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
     products_data = list(MClient['Products'].find())
     hampers_data = list(MClient['Hampers'].find())
-    customer_name = dict(MClient['Customers'].find_one({'_id':order_data['custID']}))['name']
+    customer_data = dict(MClient['Customers'].find_one({'_id':order_data['custID']}))
     
     # Convert the list of products in order_data to a dictionary for easier lookup
     products_in_order = {str(product['product_id']): product for product in order_data.get('products', [])}
@@ -424,10 +421,101 @@ def edit_po(poID):
         hamper['has_custom_price'] = 'custom_price' in hamper_in_order
     
     # print(products_data)
-    print('haha',hampers_data)
-    pprint.PrettyPrinter(width=50).pprint(hampers_data)   
-    return render_template("edit_po.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_name = customer_name)
+    # print('haha',hampers_data)
+    # pprint.PrettyPrinter(width=50).pprint(hampers_data)   
+    return render_template("edit_po.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_data = customer_data)
 
+@app.route("/edit_po_submit",methods=["POST"])
+def edit_po_submit():
+    #handling customer
+    custID = request.form.get('custID')
+    customer_name = request.form.get('customer_name')
+    customer_address = request.form.get('customer_address')
+    print("stop",customer_name,customer_address)
+    MClient['Customers'].update_one({'_id':ObjectId(custID)},{
+        '$set':{
+            'name':customer_name,
+            'address':customer_address
+        }
+    })
+    
+    #handling delivery date
+    orderID = request.form.get('orderID')
+    deliveryDate = request.form.get('deliveryDate')
+    
+    #taking products and hampers list
+    selected_products = request.form.getlist('products[]')
+    selected_hampers = request.form.getlist('hampers[]')
+    
+    #creating basic order object
+    OrderObject = {
+        'custID':ObjectId(custID),
+        'deliveryDate':deliveryDate,
+        'products': [],
+        'hampers':[]
+    }
+
+    #adding products
+    for product_id in selected_products:
+        quantity_key = 'p_quantities_' + product_id
+        quantity = int(request.form.get(quantity_key, 0))
+        cutstom_price_key = product_id + "_custom_price"
+        custom_price = request.form.get(cutstom_price_key, 0)
+        if quantity > 0 and custom_price:
+            OrderObject['products'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
+                'custom_price':float(custom_price)
+            })
+        elif quantity > 0:
+            OrderObject['products'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
+            })
+
+    #adding hampers
+    for product_id in selected_hampers:
+        quantity_key = 'h_quantities_' + product_id
+        quantity = int(request.form.get(quantity_key, 0))
+        cutstom_price_key = product_id + "_custom_price"
+        custom_price = request.form.get(cutstom_price_key, 0)
+        
+        if quantity > 0 and custom_price:
+            OrderObject['hampers'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
+                'custom_price':float(custom_price)
+            })
+        elif quantity > 0:
+            OrderObject['hampers'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
+            })
+
+    ckPOs = MClient['POs']
+    pprint.PrettyPrinter(width=50).pprint(OrderObject)   
+    ckPOs.update_one({'_id':ObjectId(orderID)},{'$set':OrderObject})
+
+    # print(OrderObject)
+    return redirect('/viewPOs')
+
+@app.route("/delete_po/<poID>",methods=["GET"])
+def delete_po(poID):
+    MClient['POs'].delete_many({
+        '_id':ObjectId(poID)
+    })
+    return redirect('/viewPOs')
+
+@app.route('/summary',methods=["GET","POST"])
+def summary():
+    data = ""
+    if request.method == "GET":
+        return render_template('summary.html')
+    else:
+        if request.form.get('viewType') == 'productSort':
+            return render_template('summary_product.html',data=data)
+        else:
+            return render_template('summary_customer.html',data="")
 
 if __name__ == '__main__':
     app.run()

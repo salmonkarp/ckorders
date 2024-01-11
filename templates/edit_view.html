@@ -63,14 +63,12 @@
                 <tr>
                     <th>Name</th>
                     <th>Normal Price</th>
-                    <th>Retail Price</th>
                     <th></th>
                 </tr>
                 {% for product in productsList %}
                 <tr>
                     <td>{{product['name']}}</td>
                     <td>{{"Rp{:,.2f}".format(product['price'])}}</td>
-                    <td>{{"Rp{:,.2f}".format(product['retail_price'])}}</td>
                     <td>
                         <a href="/edit_product/{{product['_id']}}">Edit</a>
                         <a href="/delete_product/{{product['_id']}}">Delete</a>
@@ -105,9 +103,6 @@
                     {% endfor %}
                     <tr>
                         <td colspan="3" style="text-align: right;"> Price: {{hamper['price']}} </td>
-                    </tr>
-                    <tr>
-                        <td colspan="3" style="text-align: right;"> Retail Price: {{hamper['retail_price']}} </td>
                     </tr>
                     {% endfor %}
                 </tbody>
