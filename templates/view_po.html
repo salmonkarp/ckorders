@@ -12,37 +12,37 @@
                 padding: 0;
                 overflow: hidden;
                 background-color: #333;
-                }
+            }
 
-                li {
-                float: left;
-                }
+            li {
+            float: left;
+            }
 
-                li a {
-                display: block;
-                color: white;
-                text-align: center;
-                padding: 14px 16px;
-                text-decoration: none;
-                }
+            li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            }
 
-                /* Change the link color to #111 (black) on hover */
-                li a:hover {
-                background-color: #111;
-                }
-                .active {
-                background-color: #04AA6D;
-                }
-                .additional-options{
-                    display:none;
-                }
-                .order-container{
-                    width: 40%;
-                    margin: auto;
-                    margin-top: 20px;
-                    background-color: #cccaca;
-                    padding: 10px 10px 10px 10px;
-                }
+            /* Change the link color to #111 (black) on hover */
+            li a:hover {
+            background-color: #111;
+            }
+            .active {
+            background-color: #04AA6D;
+            }
+            .additional-options{
+                display:none;
+            }
+            .lookup-options{
+                width: 40%;
+                margin: auto;
+                margin-top: 20px;
+                background-color: #cccaca;
+                padding: 10px 10px 10px 10px;
+            }
         </style>
     </head>
     <body>
@@ -55,37 +55,11 @@
             <li><a href="/summary">Summaries</a></li>
         </ul>
         
-        {% for po in data %}
-        <div class="order-container">
-            <p>Order ID: {{po['_id']}}</p>
-            <p>Customer Name: {{po['customer_name']}}</p>
-            <p>Delivery Date: {{po['deliveryDate']}}</p>
-            <table>
-                <tr>
-                    <th>Product Name</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th></th>
-                </tr>
-                {% for item in po['products'] %}
-                <tr>
-                    <td>{{item['name']}}</td>
-                    <td>{{item['price']}}</td>
-                    <td>{{item['quantity']}}</td>
-                    <td>{{item['price'] * item['quantity']}}</td>
-                </tr>
-                {% endfor %}
-                {% for item in po['hampers'] %}
-                <tr>
-                    <td>{{item['name']}}</td>
-                    <td>{{item['price']}}</td>
-                    <td>{{item['quantity']}}</td>
-                    <td>{{item['price'] * item['quantity']}}</td>
-                </tr>
-                {% endfor %}
-            </table>
+        <div class="lookup-options">
+            <a href="/lookup">Lookup</a> <br>
+            <a href="/lookup">Lookup</a> <br>
+            <a href="/lookup">Lookup</a> <br>
         </div>
-        {% endfor %}
 
     </body>
     <script>

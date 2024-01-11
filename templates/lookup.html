@@ -1,0 +1,164 @@
+<html>
+    <head>
+        <title>View POs</title>
+        <style>
+            form {
+                width: 80%;
+                margin: auto;
+                margin-top: 20px;
+                background-color: #cccaca;
+                padding: 10px 10px 10px 10px;
+            }
+
+            table,tr,td,th{
+                border: solid 1px black;
+                border-collapse: collapse;
+                text-align: center;
+            }
+
+            table {
+                width: 100%;
+            }
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+            }
+
+            li {
+                float: left;
+            }
+
+            li a {
+                display: block;
+                color: white;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+            }
+
+            li a:hover {
+                background-color: #111;
+            }
+            .active {
+                background-color: #04AA6D;
+            }
+            .additional-options{
+                display:none;
+            }
+            .order-container{
+                width: 40%;
+                margin: auto;
+                margin-top: 20px;
+                background-color: #cccaca;
+                padding: 10px 10px 10px 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Header -->
+        <ul> 
+            <li><a href="/createPO">Create PO</a></li>
+            <li class="active"><a href="/viewPOs">View POs</a></li>
+            <li><a href="/add">Add Products</a></li>
+            <li><a href="/edit">Edit Products</a></li>
+            <li><a href="/summary">Summaries</a></li>
+        </ul>
+        
+        <!-- Date selection -->
+        <form action="/viewPOs" method="POST">
+            <label for="viewType">Select view type:</label>
+            <select id="viewType" name="viewType" required>
+                <option value="" disabled selected>Select an option</option>
+                <option value="specificDate">View from specific date</option>
+                <option value="dateRange">View from date range</option>
+                <option value="allOrders">Display all orders</option>
+            </select>
+    
+            <div id="specificDate" style="display: none;">
+                <label for="specificDateInput">Enter specific date:</label>
+                <input type="date" id="specificDateInput" name="specificDate">
+            </div>
+    
+            <div id="dateRange" style="display: none;">
+                <label for="startDateInput">Start Date:</label>
+                <input type="date" id="startDateInput" name="startDate">
+                <label for="endDateInput">End Date:</label>
+                <input type="date" id="endDateInput" name="endDate">
+            </div>
+    
+            <button type="submit">View Orders</button>
+        </form>
+
+        <!-- Order Display -->
+        {% for po in data %}
+        <div class="order-container">
+            <p>Order ID: {{po['_id']}} <br>
+            Customer Name: {{po['customer_name']}} <br>
+            Delivery Date: {{po['deliveryDate']}}</p>
+            <table>
+                <tr>
+                    <th>Product Name</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Subtotal</th>
+                </tr>
+                {% for item in po['products'] %}
+                <tr>
+                    <td>{{item['name']}}</td>
+                    <td>{{"Rp {:,.2f}".format(item['price'])}}</td>
+                    <td>{{item['quantity']}}</td>
+                    <td>
+                        {% set subtotal = item['quantity'] * item['price'] %}
+                        {{ "Rp {:,.2f}".format(subtotal) }} 
+                    </td>
+                </tr>
+                {% endfor %}
+                {% for item in po['hampers'] %}
+                <tr>
+                    <td>{{item['name']}}</td>
+                    <td>{{"Rp {:,.2f}".format(item['price'])}}</td>
+                    <td>{{item['quantity']}}</td>
+                    <td>
+                        {% set subtotal = item['quantity'] * item['price'] %}
+                        {{ "Rp {:,.2f}".format(subtotal) }}
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <tfoot>
+                    <tr>
+                        <td colspan="3" style="text-align: right; padding-right:5px">Total: </td>
+                        <td>
+                            {{ "Rp {:,.2f}".format(po['order_total']) }} 
+                        </td>
+                    </tr>
+                </tfoot>
+
+            </table>
+            <a href="edit_po/{{po['_id']}}">Edit</a>
+            <a href="delete_po/{{po['_id']}}">Delete</a>
+        </div>
+        {% endfor %}
+
+    </body>
+    <script>
+        document.getElementById('viewType').addEventListener('change', function() {
+            var specificDateDiv = document.getElementById('specificDate');
+            var dateRangeDiv = document.getElementById('dateRange');
+
+            if (this.value === 'specificDate') {
+                specificDateDiv.style.display = 'block';
+                dateRangeDiv.style.display = 'none';
+            } else if (this.value === 'dateRange') {
+                specificDateDiv.style.display = 'none';
+                dateRangeDiv.style.display = 'block';
+            } else {
+                specificDateDiv.style.display = 'none';
+                dateRangeDiv.style.display = 'none';
+            }
+        });
+    </script>
+</html>

@@ -1,0 +1,148 @@
+<html>
+    <head>
+        <title>Edit PO</title>
+        <style>
+            ul {
+                list-style-type: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background-color: #333;
+                }
+
+            li {
+            float: left;
+            }
+
+            li a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            }
+
+            /* Change the link color to #111 (black) on hover */
+            li a:hover {
+            background-color: #111;
+            }
+            .active {
+            background-color: #04AA6D;
+            }
+            .center_form{
+                width: 30%;
+                margin: auto;
+                margin-top: 20px;
+                background-color: #cccaca;
+                padding: 10px 10px 10px 10px;
+            }
+            .product-option{
+                float:none;
+                background-color: #ababab;
+            }
+            .additional-options{
+                display: none;
+            }
+            .hiddenDivProduct{
+                padding-left: 50px;
+            }
+            .hiddenDivHamper{
+                padding-left: 50px;
+            }
+        </style>
+    </head>
+    <body>
+        <ul>
+            <li><a href="/createPO" class="active">Create PO</a></li>
+            <li><a href="/viewPOs">View POs</a></li>
+            <li><a href="/add">Add Products</a></li>
+            <li><a href="/edit">Edit Products</a></li>
+            <li><a href="/summary">Summaries</a></li>
+        </ul>
+        <form action="/createPOSubmit" enctype="multipart/form-data" method="post">
+            <div class="center_form">
+                <p>Edit PO</p>
+
+                <!-- Existing Customer Data -->
+                <p>Customer Name: {{ customer_name }} <br>
+                    Delivery Date: {{ order_data['deliveryDate'] }}
+                </p>
+                <input type="hidden" name="orderId" value="{{ order_data._id }}">
+                
+                <!-- Input of products -->
+                <p>Select products:</p>
+                <ul id="product-list" style="list-style-type: none; padding: 0;">
+                    {% for product in products_data %}
+                        <li class="product-option">
+                            <input type="checkbox" name="products[]" value="{{ product._id }}" class="checkboxClass" {% if product.in_order %} checked {% endif %} onchange="toggleDiv(this, 'hiddenDivProduct')">
+                            <label for="product_{{ product._id }}">{{ product.name }}</label>
+                            <br>
+                            
+                            <div class="hiddenDivProduct" style="display: {% if product.in_order %}block{% else %}none{% endif %}">
+                                <label>Quantity: </label>
+                                <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" value="{{ product.quantity_in_order }}">
+                                <br>
+                                <input type="radio" id="{{ product._id }}_normal_price" name="{{ product._id }}_price_type" value="normal" {% if not product.has_custom_price %} checked {% endif %}>
+                                <label for="{{ product._id }}_normal_price">Normal Price: Rp{{ product.price }}</label>
+                                <br>
+
+                                <input type="radio" id="{{ product._id }}_custom_price" name="{{ product._id }}_price_type" value="custom" {% if product.has_custom_price %} checked {% endif %}>
+                                <label for="{{ product._id }}_custom_price">Custom Price:</label>
+                                <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" value="{{ product.custom_price_in_order }}"><br>
+                            </div>
+                        </li>
+                        <script>
+                            selectRadio('{{ product._id }}_normal_price', '{{ 'normal' if not product.has_custom_price else 'custom' }}');
+                            selectRadio('{{ product._id }}_custom_price', '{{ 'custom' if product.has_custom_price else 'normal' }}');
+                        </script>
+                    {% endfor %}
+                </ul>
+
+                <!-- Hampers selection -->
+                <p>Select hampers:</p>
+                <ul id="product-list" style="list-style-type: none; padding: 0;">
+                    {% for hamper in hampers_data %}
+                        <li class="product-option">
+                            <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" class="checkboxClass" {% if hamper.in_order %} checked {% endif %} onchange="toggleDiv(this, 'hiddenDivHamper')">
+                            <label for="hamper_{{ hamper._id }}">{{ hamper.name }}</label>
+                            <br>
+                            
+                            <div class="hiddenDivHamper" style="display: {% if hamper.in_order %}block{% else %}none{% endif %}">
+                                <label>Quantity: </label>
+                                <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" value="{{ hamper.quantity_in_order }}">
+                                <br>
+                                <input type="radio" id="{{ hamper._id }}_normal_price" name="{{ hamper._id }}_price_type" value="normal" {% if not hamper.has_custom_price %} checked {% endif %}>
+                                <label for="{{ hamper._id }}_normal_price">Normal Price: Rp{{ hamper.price }}</label>
+                                <br>
+
+                                <input type="radio" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_price_type" value="custom" {% if hamper.has_custom_price %} checked {% endif %}>
+                                <label for="{{ hamper._id }}_custom_price">Custom Price:</label>
+                                <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price" value="{{ hamper.custom_price_in_order }}"><br>
+                            </div>
+                        </li>
+                        <script>
+                            selectRadio('{{ hamper._id }}_normal_price', '{{ 'normal' if not hamper.has_custom_price else 'custom' }}');
+                            selectRadio('{{ hamper._id }}_custom_price', '{{ 'custom' if hamper.has_custom_price else 'normal' }}');
+                        </script>
+                    {% endfor %}
+                </ul>
+
+                <input type="submit" value="Submit Changes">
+            </div>
+        </form>
+    </body>
+    <script>
+        function toggleDiv(checkbox, divClass) {
+        var hiddenDiv = checkbox.parentNode.querySelector('.' + divClass);
+        hiddenDiv.style.display = checkbox.checked ? 'block' : 'none';
+    }
+        function selectRadio(elementId, value) {
+        var radioElement = document.getElementById(elementId);
+        if (radioElement) {
+            radioElement.checked = value;
+        }
+    }
+
+    </script>
+    
+</html>

@@ -20,8 +20,71 @@ def open_DB(db):
     connection.row_factory = sqlite3.Row
     return connection
 
+pipeline = [
+        {
+            '$unwind': 
+                {'path':'$products',
+                 'preserveNullAndEmptyArrays': True
+                }
+        },
+        {
+            '$lookup': {
+                'from': 'Products',
+                'localField': 'products.product_id',
+                'foreignField': '_id',
+                'as': 'product_details'
+            }
+        },
+        {
+            '$unwind': {
+                'path':'$hampers',
+                 'preserveNullAndEmptyArrays': True
+            }
+        },
+        {
+            '$lookup': {
+                'from': 'Hampers',
+                'localField': 'hampers.product_id',
+                'foreignField': '_id',
+                'as': 'hamper_details'
+            }
+        },
+        {
+        "$lookup": {
+                "from": "Customers",
+                "localField": "custID",
+                "foreignField": "_id",
+                "as": "customer_details"
+            }
+        },
+        {
+            '$group': {
+                '_id': '$_id',
+                'order_id': {'$first': '$_id'},
+                'customer_name': {"$first": {"$arrayElemAt": ["$customer_details.name", 0]}},
+                'deliveryDate': {'$first': '$deliveryDate'},
+                "products": {"$addToSet": {
+                    "name": {"$arrayElemAt": ["$product_details.name", 0]}, 
+                    "price": {"$ifNull": ["$products.custom_price", {"$arrayElemAt": ["$product_details.price", 0]}]},
+                    "quantity": "$products.quantity"
+                    }},
+                "hampers": {"$addToSet": {
+                    "name": {"$arrayElemAt": ["$hamper_details.name", 0]}, 
+                    "price": {"$ifNull": ["$hampers.custom_price", {"$arrayElemAt": ["$hamper_details.price", 0]}]},
+                    "quantity": "$hampers.quantity"}}
+            }
+        },
+        {
+            "$sort": {
+                "deliveryDate": 1
+            }
+        }
+    ]
+
+
 # object creation
 app = Flask(__name__)
+os.environ["MONGOKEY"] = "l6ws7zM0vFplKeTc"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 print(MCString)
@@ -251,7 +314,7 @@ def createPOSubmit():
             OrderObject['products'].append({
                 'product_id': ObjectId(product_id),
                 'quantity': quantity,
-                'price':custom_price
+                'custom_price':float(custom_price)
             })
         elif quantity > 0:
             OrderObject['products'].append({
@@ -284,67 +347,88 @@ def createPOSubmit():
     print(OrderObject)
     return redirect('/viewPOs')
 
-@app.route("/viewPOs",methods=["GET"])
-def viewPOs():
-    return redirect('/lookup/2023-1-27')
-
-@app.route("/lookup/<requestDate>",methods=["GET"])
-def lookup(requestDate):
-    print(requestDate)
+@app.route("/viewPOs",methods=["GET","POST"])
+def lookup():
     POData = MClient['POs']
-    FinalData = {}
-    pipeline = [
-        {
-            '$unwind': '$products'
-        },
-        {
-            '$lookup': {
-                'from': 'Products',
-                'localField': 'products.product_id',
-                'foreignField': '_id',
-                'as': 'product_details'
-            }
-        },
-        {
-            '$unwind': '$hampers'
-        },
-        {
-            '$lookup': {
-                'from': 'Hampers',
-                'localField': 'hampers.product_id',
-                'foreignField': '_id',
-                'as': 'hamper_details'
-            }
-        },
-        {
-        "$lookup": {
-                "from": "Customers",
-                "localField": "custID",
-                "foreignField": "_id",
-                "as": "customer_details"
-            }
-        },
-        {
-            '$group': {
-                '_id': '$_id',
-                'order_id': {'$first': '$_id'},
-                'customer_name': {"$first": {"$arrayElemAt": ["$customer_details.name", 0]}},
-                'deliveryDate': {'$first': '$deliveryDate'},
-                "products": {"$addToSet": {
-                    "name": {"$arrayElemAt": ["$product_details.name", 0]}, 
-                    "price": {"$ifNull": ["$products.custom_price", {"$arrayElemAt": ["$product_details.price", 0]}]},
-                    "quantity": "$products.quantity"
-                    }},
-                "hampers": {"$addToSet": {
-                    "name": {"$arrayElemAt": ["$hamper_details.name", 0]}, 
-                    "price": {"$ifNull": ["$hampers.custom_price", {"$arrayElemAt": ["$hamper_details.price", 0]}]},
-                    "quantity": "$hampers.quantity"}}
-            }
-        }
-    ]
-    FinalData = list(POData.aggregate(pipeline))
-    pprint.PrettyPrinter(width=50).pprint(FinalData)
-    return render_template('view_po.html',data = FinalData)
+    cust_pipeline = pipeline
+    
+    # handling specific date selection
+    if request.method == "POST":
+        view_type = request.form.get('viewType')
+
+        if view_type == 'specificDate':
+            specific_date = request.form.get('specificDate')
+            # Filter orders based on specific date
+            cust_pipeline = [{
+                "$match": {
+                    "deliveryDate": specific_date
+                }
+            }] + pipeline
+        
+        elif view_type == 'dateRange':
+            start_date = request.form.get('startDate')
+            end_date = request.form.get('endDate')
+            # Filter orders based on date range
+            cust_pipeline = [{
+                "$match": {
+                    "deliveryDate": {
+                        "$gte": start_date,
+                        "$lte": end_date
+                    }
+                }
+            }] + pipeline
+    
+    print(cust_pipeline)
+    orders_data = list(POData.aggregate(cust_pipeline))
+    print(len(orders_data))
+    print(len(list(POData.find())))
+    # pprint.PrettyPrinter(width=50).pprint(orders_data)    
+    for order in orders_data:
+        order_total = 0.0
+        if order['products'] == [{}]:
+            order['products'] = []
+        if order['hampers'] == [{}]:
+            order['hampers'] = []
+        for product in order['products']:
+            order_total += product['price'] * product['quantity']
+        for product in order['hampers']:
+            order_total += product['price'] * product['quantity']
+        order['order_total'] = order_total
+    return render_template('lookup.html',data = orders_data)
+
+@app.route("/edit_po/<poID>",methods=["GET"])
+def edit_po(poID):
+    order_data = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
+    products_data = list(MClient['Products'].find())
+    hampers_data = list(MClient['Hampers'].find())
+    customer_name = dict(MClient['Customers'].find_one({'_id':order_data['custID']}))['name']
+    
+    # Convert the list of products in order_data to a dictionary for easier lookup
+    products_in_order = {str(product['product_id']): product for product in order_data.get('products', [])}
+    hampers_in_order = {str(hamper['product_id']): hamper for hamper in order_data.get('hampers', [])}
+    
+    # Add a quantity and custom_price field to each product based on order_data
+    for product in products_data:
+        product_id_str = str(product['_id'])
+        product_in_order = products_in_order.get(product_id_str, {})
+        product['quantity_in_order'] = product_in_order.get('quantity', 0)
+        product['custom_price_in_order'] = product_in_order.get('custom_price', product['price'])
+        product['in_order'] = bool(product_in_order)  # Add in_order flag
+        product['has_custom_price'] = 'custom_price' in product_in_order
+
+    for hamper in hampers_data:
+        hamper_id_str = str(hamper['_id'])
+        hamper_in_order = hampers_in_order.get(hamper_id_str, {})
+        hamper['quantity_in_order'] = hamper_in_order.get('quantity', 0)
+        hamper['custom_price_in_order'] = hamper_in_order.get('custom_price', hamper['price'])
+        hamper['in_order'] = bool(hamper_in_order)  # Add in_order flag
+        hamper['has_custom_price'] = 'custom_price' in hamper_in_order
+    
+    # print(products_data)
+    print('haha',hampers_data)
+    pprint.PrettyPrinter(width=50).pprint(hampers_data)   
+    return render_template("edit_po.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_name = customer_name)
+
 
 if __name__ == '__main__':
     app.run()
