@@ -5,6 +5,10 @@
             table,tr,td,th{
                 border: solid 1px black;
                 border-collapse: collapse;
+                text-align:center;
+            }
+            table {
+                width:100%;
             }
             ul {
                 list-style-type: none;
@@ -36,6 +40,13 @@
                 .additional-options{
                     display:none;
                 }
+                .center_form{
+                width: 40%;
+                margin: auto;
+                margin-top: 20px;
+                background-color: #cccaca;
+                padding: 10px 10px 10px 10px;
+            }
         </style>
     </head>
     <body>
@@ -48,7 +59,7 @@
             <li><a href="/summary">Summaries</a></li>
         </ul>
 
-
+        <div class="center_form">
         <!-- Choose from either product or hampers -->
         <label>
             <input type="radio" name="product-type" value="product" onclick="showOptions('product')"> Product
@@ -58,23 +69,32 @@
         </label>
 
         <!-- Table for product -->
+        <br><br>
         <div class="additional-options" id="product-options">
             <table>
                 <tr>
                     <th>Name</th>
-                    <th>Normal Price</th>
-                    <th></th>
+                    <th>Current Stock</th>
+                    <th colspan="2">Prices</th>
                 </tr>
-                {% for product in productsList %}
-                <tr>
-                    <td>{{product['name']}}</td>
-                    <td>{{"Rp{:,.2f}".format(product['price'])}}</td>
-                    <td>
-                        <a href="/edit_product/{{product['_id']}}">Edit</a>
-                        <a href="/delete_product/{{product['_id']}}">Delete</a>
-                    </td>
-                </tr>
-                {% endfor %}
+                <tbody>
+                    {% for product in productsList %}
+                        {% for price in product.prices %}
+                            <tr>
+                                {% if loop.index0 == 0 %}
+                                    <td rowspan="{{ product.prices|length }}">
+                                        {{ product.name }} <br>
+                                        <a href="/edit_product/{{product['_id']}}">Edit</a> or
+                                        <a href="/edit_product/{{product['_id']}}">Delete</a>
+                                    </td>
+                                    <td rowspan="{{ product.prices|length }}">{{ product.currentStock }}</td>
+                                {% endif %}
+                                <td>{{ price.name }}</td>
+                                <td>{{ price.value }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
             </table>
         </div>
 
@@ -84,7 +104,7 @@
                 <thead>
                     <tr>
                         <th>Hamper Name</th>
-                        <th>Product Name</th>
+                        <th>Products</th>
                         <th>Quantity</th>
                     </tr>
                 </thead>
@@ -94,7 +114,7 @@
                         <tr>
                             <td>
                                 {{ hamper.name }} <br>
-                                <a href="/edit_hampers/{{hamper['_id']}}">Edit</a>
+                                <a href="/edit_hampers/{{hamper['_id']}}">Edit</a> or
                                 <a href="/delete_hampers/{{hamper['_id']}}">Delete</a>
                             </td>
                             <td>{{ item.name }}</td>
@@ -108,7 +128,7 @@
                 </tbody>
             </table>
         </div>
-        
+    </div>
     </body>
     <script>
         function showOptions(productType) {
@@ -136,6 +156,6 @@
             }
             }
         };
-        window.onload = combineCells;
+        window.onload = combineCells();
     </script>
 </html>

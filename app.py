@@ -85,6 +85,7 @@ pipeline = [
 
 # object creation
 app = Flask(__name__)
+os.environ["MONGOKEY"] = "l6ws7zM0vFplKeTc"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 print(MCString)
@@ -120,8 +121,20 @@ def add_submit():
             ckProducts = MClient['Products']
             new_product = {
                 'name': request.form.get('name'),
-                'price': float(request.form.get('price')),
+                'currentStock': int(request.form['currentStock']),
+                'prices':[]
             }
+            
+            # Extract price names and values from the form
+            price_names = request.form.getlist('priceName[]')
+            price_values = request.form.getlist('priceValue[]')
+
+            # Create a list of dictionaries for prices
+            for name, value in zip(price_names, price_values):
+                new_product['prices'].append({
+                    'name': name,
+                    'value': float(value)
+                })
             ckProducts.insert_one(new_product)
             return redirect('/')
         
@@ -157,19 +170,56 @@ def add_submit():
 # view object get
 @app.route("/edit",methods=["GET"])
 def edit_view():
-    ckConn = MClient['Products']
-    ckProducts = list(MClient['Products'].find())
-    ckHampers = list(MClient['Hampers'].find())
-    
-    # modifying ckHampers to include product name
-    for hamper in ckHampers:
-        for item in hamper['items']:
-            itemID = item['product_id']
-            itemName = list(ckConn.find({
-                '_id':ObjectId(itemID)
-            },))[0]['name']
-            item['name'] = (itemName)
-    return render_template("edit_view.html",productsList = ckProducts, hampersList = ckHampers)
+    ckHampers = MClient['Hampers']
+    pipeline = pipeline = [
+        {
+            '$lookup': {
+                'from': 'Products',
+                'localField': 'items.product_id',
+                'foreignField': '_id',
+                'as': 'itemsDetails'
+            }
+        },
+        {
+            '$unwind': '$itemsDetails'
+        },
+        {
+            '$project': {
+                '_id': 1,
+                'name': 1,
+                'price': 1,
+                'item': {
+                    'product_id': '$itemsDetails._id',
+                    'quantity': {'$arrayElemAt': ['$items.quantity', {'$indexOfArray': ['$items.product_id', '$itemsDetails._id']}]},
+                    'name': '$itemsDetails.name'
+                }
+            }
+        },
+        {
+            '$group': {
+                '_id': {
+                    '_id': '$_id',
+                    'name': '$name',
+                    'price': '$price'
+                },
+                'items': {
+                    '$push': '$item'
+                }
+            }
+        },
+        {
+            '$project': {
+                '_id': '$_id._id',
+                'name': '$_id.name',
+                'price': '$_id.price',
+                'items': 1
+            }
+        }
+    ]
+
+    hampersList = list(ckHampers.aggregate(pipeline))
+    productsList = list(MClient['Products'].find())
+    return render_template("edit_view.html", hampersList = hampersList, productsList = productsList)
 
 # edit product get
 @app.route("/edit_product/<productID>",methods=["GET"])
@@ -184,12 +234,24 @@ def edit_product(productID):
 @app.route("/edit_product_submit/<productID>", methods=["POST"])
 def edit_product_submit(productID):
     ckConn = MClient['Products']
+    updated_name = request.form['name']
+    updated_current_stock = int(request.form['currentStock'])
+    
+    # Process existing prices from the form
+    prices = []
+    for i in range(len(request.form.getlist('priceName'))):
+        price_name = request.form.getlist('priceName')[i]
+        price_value = float(request.form.getlist('priceValue')[i])
+        prices.append({"name": price_name, "value": price_value})
+    print(prices)
+    # Update the product data
     ckConn.update_many({
         '_id':ObjectId(productID)
     },{
         '$set':{
-            'name':request.form.get('name'),
-            'price': float(request.form.get('price')),
+            'name':updated_name,
+            'currentStock':updated_current_stock,
+            'prices': prices
         }
     })
     return redirect('/')
@@ -238,7 +300,7 @@ def edit_hampers_submit(hampersID):
         new_quantity = int(request.form.get(quantity_key, 0))
         if new_quantity != 0:
             hamper['items'].append({
-                'product_id': product_id,
+                'product_id': ObjectId(product_id),
                 'product_name': product['name'],
                 'quantity': new_quantity
             })
@@ -564,7 +626,7 @@ def summary():
         
         # sort by customer
         else:
-            customer_totals = {}   
+            customer_totals = {}
             ProductsData = MClient['Products'].find()
             HampersData = MClient['Hampers']
             return render_template('summary_customer.html',data="")

@@ -26,6 +26,13 @@
                 li a:hover {
                 background-color: #111;
                 }
+                .center_form{
+                    width: 40%;
+                    margin: auto;
+                    margin-top: 20px;
+                    background-color: #cccaca;
+                    padding: 10px 10px 10px 10px;
+                }
         </style>
     </head>
     <body>
@@ -37,17 +44,75 @@
             <li><a href="/summary">Summaries</a></li>
         </ul>
         <form action="/edit_product_submit/{{product['_id']}}" method="post" enctype="multipart/form-data">
-            <div id="product-options">
-                <label>
-                    Product Name <input type="text" name="name" value="{{product['name']}}">
-                </label>
+            <div class="center_form">
+                <table style="border:none">
+                    <tr>
+                        <td style="width:30%">Product Name</td>
+                        <td><input type="text" name="name" value="{{product['name']}}"></td>
+                    </tr>
+                    <tr>
+                        <td>Current Stock</td>
+                        <td><input type="number" id="currentStock" name="currentStock" value="{{product['currentStock']}}"></td>
+                    </tr>
+                    <tr>
+                        <td>Prices</td>
+                        <td>
+                            <div id="pricesContainer">
+                                {% for loop_price in range(product.prices|length) %}
+                                    <div>
+                                        <input type="hidden" name="priceId" value="{{ product.prices[loop_price]._id }}">
+                                        <label for="priceName{{ loop_price }}">Price Name:</label>
+                                        <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ product.prices[loop_price].name }}" required>
+                                        <br>
+                        
+                                        <label for="priceValue{{ loop_price }}">Price Value:</label>
+                                        <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ product.prices[loop_price].value }}" required>
+                                        <br>
+                                    </div>
+                                {% endfor %}
+                            </div>                        
+
+                            <button type="button" onclick="addPriceField()">Add Price</button>
+                            <button type="button" onclick="removePriceField()">Remove Last Price</button>
+                        </td>
+                    </tr>
+                </table>
+                
+                
+                <!-- submit -->
                 <br>
-                <label>
-                    Normal Price <input type="text" name="price" value="{{product['price']}}">
-                </label>
-                <br>
-                <button type="submit">Submit</button>
+                <button type="submit">Update Product</button>
             </div>
         </form>
     </body>
+    <script>
+        var priceCounter = {{ product.prices|length }};
+        
+        function addPriceField() {
+            priceCounter++;
+            var pricesContainer = document.getElementById('pricesContainer');
+            var newPriceField = document.createElement('div');
+
+            newPriceField.innerHTML = `
+                <label for="priceName${priceCounter}">Price Name:</label>
+                <input type="text" name="priceName" required>
+                <br>
+
+                <label for="priceValue${priceCounter}">Price Value:</label>
+                <input type="number" name="priceValue" required>
+                <br>
+            `;
+
+            pricesContainer.appendChild(newPriceField);
+        }
+
+        function removePriceField() {
+            var pricesContainer = document.getElementById('pricesContainer');
+
+            if (pricesContainer.childElementCount > 1) {
+                pricesContainer.removeChild(pricesContainer.lastChild);
+                priceCounter--;
+            }
+        }
+    </script>
 </html>

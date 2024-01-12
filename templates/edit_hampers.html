@@ -35,6 +35,14 @@
                     float:none;
                     background-color: #ababab;
                 }
+
+                .center_form{
+                    width: 40%;
+                    margin: auto;
+                    margin-top: 20px;
+                    background-color: #cccaca;
+                    padding: 10px 10px 10px 10px;
+                }
         </style>
     </head>
     <body>
@@ -46,25 +54,33 @@
             <li><a href="/summary">Summaries</a></li>
         </ul>
         <form action="/edit_hampers_submit/{{hamper['_id']}}" method="post" enctype="multipart/form-data">
-            <div id="product-options">
-                <label>
-                    Hampers Name <input type="text" name="hname" value="{{hamper['name']}}">
-                </label>
-                <br>
-                <ul id="product-list" style="list-style-type: none; padding: 0;">
-                    {% for product in productsList %}
-                        <li class="product-option">
-                            <label for="product_{{ product._id }}">{{ product.name }}</label>
-                            <input type="number" name="quantity_{{ product._id }}" class="quantity-input" placeholder="Quantity" value="{{QuantDict[product._id]}}">
-                        </li>
-                    {% endfor %}
-                </ul><br>
-                <label>
-                    Normal Price <input type="text" name="hprice" value="{{hamper['price']}}">
-                </label>
-                <br>
-                <input type="submit"></input>
-            </div>
+            <table class="center_form">
+                <tr>
+                    <td>Hampers Name</td>
+                    <td><input type="text" name="hname" value="{{hamper['name']}}"></td>
+                </tr>
+                <tr>
+                    <td>Products</td>
+                    <td colspan="2">
+                        <table>
+                            {% for product in productsList %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td><input type="number" name="quantity_{{ product._id }}" class="quantity-input" placeholder="Quantity" value="{{QuantDict[product._id]}}" style="width:30%"></td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td> Price </td>
+                    <td><input type="text" name="hprice" value="{{hamper['price']}}"></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><input type="submit"></input></td>
+                </tr>
+            </table>
+            
         </form>
     </body>
     <script>
