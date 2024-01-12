@@ -85,6 +85,7 @@ pipeline = [
 
 # object creation
 app = Flask(__name__)
+os.environ["MONGOKEY"] = "l6ws7zM0vFplKeTc"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 print(MCString)
@@ -508,12 +509,62 @@ def delete_po(poID):
 
 @app.route('/summary',methods=["GET","POST"])
 def summary():
-    data = ""
     if request.method == "GET":
         return render_template('summary.html')
     else:
+        startDate = request.form.get('startDate')
+        endDate = request.form.get('endDate')
+        
+        # sorting by products
         if request.form.get('viewType') == 'productSort':
-            return render_template('summary_product.html',data=data)
+            OrderData = MClient['POs'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            )
+            ProductsData = MClient['Products'].find()
+            HampersData = MClient['Hampers']
+            product_totals = {}
+            for order in OrderData:
+                for product in order.get('products',[]):
+                    product_id = str(product['product_id'])
+                    quantity = product['quantity']
+                    product_totals[product_id] = product_totals.get(product_id, 0) + quantity
+                for hamper in order.get('hampers',[]):
+                    hamper_id = str(hamper['product_id'])
+                    hamper_quantity = hamper['quantity']
+                    hamper_details = HampersData.find_one({'_id':ObjectId(hamper_id)})
+                    
+                    if hamper_details:
+                        hamper_products = hamper_details['items']
+                    else:
+                        hamper_products = []
+                        
+                    print(hamper_products)
+                    for product in hamper_products:
+                        product_id = str(product['product_id'])
+                        product_quantity = product['quantity']
+                        product_totals[product_id] = product_totals.get(product_id, 0) + (product_quantity * hamper_quantity)
+                        
+                    
+            summary_data = []
+            for product in ProductsData:
+                product_id = str(product['_id'])
+                product_name = product['name']
+                total_quantity = product_totals.get(product_id,0)
+                summary_data.append(
+                    {
+                        'name':product_name,
+                        'total_quantity':total_quantity
+                    }
+                )
+            
+            return render_template('summary_product.html',data=summary_data, startDate = startDate, endDate = endDate)
+        
+        # sort by customer
         else:
             return render_template('summary_customer.html',data="")
 
