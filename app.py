@@ -85,7 +85,6 @@ pipeline = [
 
 # object creation
 app = Flask(__name__)
-os.environ["MONGOKEY"] = "l6ws7zM0vFplKeTc"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 print(MCString)
@@ -514,17 +513,16 @@ def summary():
     else:
         startDate = request.form.get('startDate')
         endDate = request.form.get('endDate')
-        
+        OrderData = MClient['POs'].find(
+            {
+                'deliveryDate':{
+                    '$gte':startDate,
+                    '$lte':endDate
+                }
+            }
+        )
         # sorting by products
         if request.form.get('viewType') == 'productSort':
-            OrderData = MClient['POs'].find(
-                {
-                    'deliveryDate':{
-                        '$gte':startDate,
-                        '$lte':endDate
-                    }
-                }
-            )
             ProductsData = MClient['Products'].find()
             HampersData = MClient['Hampers']
             product_totals = {}
@@ -566,6 +564,9 @@ def summary():
         
         # sort by customer
         else:
+            customer_totals = {}   
+            ProductsData = MClient['Products'].find()
+            HampersData = MClient['Hampers']
             return render_template('summary_customer.html',data="")
 
 if __name__ == '__main__':
