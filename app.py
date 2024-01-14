@@ -549,7 +549,11 @@ def edit_po_submit():
     
     #handling delivery date and order discount
     deliveryDate = request.form.get('deliveryDate')
-    orderDiscount = float(request.form.get('order-discount'))
+    orderDiscount = request.form.get('order-discount')
+    if orderDiscount:
+        orderDiscount = float(orderDiscount)
+    else:
+        orderDiscount = 0.0
     
     #taking products and hampers list
     selected_products = request.form.getlist('products[]')
