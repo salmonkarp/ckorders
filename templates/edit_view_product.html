@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}View Products{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .center_form {
+            width: 60%;
+            margin: auto;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .main-hamper-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .hamper-detail-container {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #04AA6D;
+            color: #fff;
+        }
+
+        a.add {
+            color: #04AA6D;
+            text-decoration: none;
+            margin-right: 10px;
+        }
+
+        a.add:hover {
+            text-decoration: underline;
+        }
+
+        label {
+            margin-right: 20px;
+        }
+
+        .additional-options table {
+            margin-top: 10px;
+        }
+
+        a.back{
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        a.back:hover{
+            background-color: #04AA6D;
+        }
+    </style>
+</head>
+<body>
+    <div class="center_form">
+        <!-- Table for product -->
+        <div class="additional-options" id="product-options">
+            <a href="/add_product"class="back">Add Product</a>
+            <h2></h2>
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Current Stock</th>
+                    <th colspan="2">Prices</th>
+                </tr>
+                <tbody>
+                    {% for product in productsList %}
+                        {% for price in product.prices %}
+                            <tr>
+                                {% if loop.index0 == 0 %}
+                                    <td rowspan="{{ product.prices|length }}">
+                                        {{ product.name }} <br>
+                                        <a href="/edit_product/{{product['_id']}}" class="add">Edit</a>or
+                                        <a href="/edit_product/{{product['_id']}}" class="add">Delete</a>
+                                    </td>
+                                    <td rowspan="{{ product.prices|length }}">{{ product.currentStock }}</td>
+                                {% endif %}
+                                <td>{{ price.name }}</td>
+                                <td>{{ price.value |format_currency}}</td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <a href="/modify" onclick="goBack()" class="back">Back</a>
+    </div>
+
+    <script>
+    </script>
+</body>
+{% endblock %}

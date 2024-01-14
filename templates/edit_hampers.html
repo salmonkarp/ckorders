@@ -1,88 +1,104 @@
-<html>
-    <head>
-        <title>Menu</title>
-        <style>
-            ul {
-                list-style-type: none;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background-color: #333;
-                }
+<!-- edit_hampers.html -->
 
-                li {
-                float: left;
-                }
+{% extends 'base.html' %}
 
-                li a {
-                display: block;
-                color: white;
-                text-align: center;
-                padding: 14px 16px;
-                text-decoration: none;
-                }
+{% block title %}Edit Hampers{% endblock %}
+
+{% block content %}
+<head>
+    <title>Menu</title>
+    <style>
+        .product-option{
+            float:none;
+            background-color: #ababab;
+        }
+
+        .center_form{
+            width: 40%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #cccaca;
+            padding: 10px 10px 10px 10px;
+        }
+    </style>
+</head>
+<body>
+    <form action="/edit_hampers_submit/{{hamper['_id']}}" method="post" enctype="multipart/form-data">
+        <table class="center_form">
+            <tr>
+                <td>Hampers Name</td>
+                <td><input type="text" name="hname" value="{{hamper['name']}}"></td>
+            </tr>
+            <tr>
+                <td>Products</td>
+                <td colspan="2">
+                    <table>
+                        {% for product in productsList %}
+                        <tr>
+                            <td>{{ product.name }}</td>
+                            <td><input type="number" name="quantity_{{ product._id }}" class="quantity-input" placeholder="Quantity" value="{{QuantDict[product._id]}}" style="width:30%"></td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td> Prices </td>
+                <td>
+                    <div id="pricesContainer">
+                        {% for loop_price in range(hamper.prices|length) %}
+                            <div>
+                                <input type="hidden" name="priceId" value="{{ hamper.prices[loop_price]._id }}">
+                                <label for="priceName{{ loop_price }}">Price Name:</label>
+                                <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ hamper.prices[loop_price].name }}" required>
+                                <br>
                 
-                .active {
-                background-color: #04AA6D;
-                }
-                
-                /* Change the link color to #111 (black) on hover */
-                li a:hover {
-                background-color: #111;
-                }
+                                <label for="priceValue{{ loop_price }}">Price Value:</label>
+                                <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ hamper.prices[loop_price].value }}" required>
+                                <br>
+                            </div>
+                        {% endfor %}
+                    </div>                        
 
-                .product-option{
-                    float:none;
-                    background-color: #ababab;
-                }
+                    <button type="button" onclick="addPriceField()">Add Price</button>
+                    <button type="button" onclick="removePriceField()">Remove Last Price</button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2"><input type="submit"></input></td>
+            </tr>
+        </table>
+        
+    </form>
+</body>
+<script>
+    var priceCounter = {{ hamper.prices|length }};
+    
+    function addPriceField() {
+        priceCounter++;
+        var pricesContainer = document.getElementById('pricesContainer');
+        var newPriceField = document.createElement('div');
 
-                .center_form{
-                    width: 40%;
-                    margin: auto;
-                    margin-top: 20px;
-                    background-color: #cccaca;
-                    padding: 10px 10px 10px 10px;
-                }
-        </style>
-    </head>
-    <body>
-        <ul>
-            <li><a href="/createPO">Create PO</a></li>
-            <li><a href="/viewPOs">View POs</a></li>
-            <li><a href="/add">Add Products</a></li>
-            <li><a href="/edit">Edit Products</a></li>
-            <li><a href="/summary">Summaries</a></li>
-        </ul>
-        <form action="/edit_hampers_submit/{{hamper['_id']}}" method="post" enctype="multipart/form-data">
-            <table class="center_form">
-                <tr>
-                    <td>Hampers Name</td>
-                    <td><input type="text" name="hname" value="{{hamper['name']}}"></td>
-                </tr>
-                <tr>
-                    <td>Products</td>
-                    <td colspan="2">
-                        <table>
-                            {% for product in productsList %}
-                            <tr>
-                                <td>{{ product.name }}</td>
-                                <td><input type="number" name="quantity_{{ product._id }}" class="quantity-input" placeholder="Quantity" value="{{QuantDict[product._id]}}" style="width:30%"></td>
-                            </tr>
-                            {% endfor %}
-                        </table>
-                    </td>
-                </tr>
-                <tr>
-                    <td> Price </td>
-                    <td><input type="text" name="hprice" value="{{hamper['price']}}"></td>
-                </tr>
-                <tr>
-                    <td colspan="2"><input type="submit"></input></td>
-                </tr>
-            </table>
-            
-        </form>
-    </body>
-    <script>
-    </script>
-</html>
+        newPriceField.innerHTML = `
+            <label for="priceName${priceCounter}">Price Name:</label>
+            <input type="text" name="priceName" required>
+            <br>
+
+            <label for="priceValue${priceCounter}">Price Value:</label>
+            <input type="number" name="priceValue" required>
+            <br>
+        `;
+
+        pricesContainer.appendChild(newPriceField);
+    }
+
+    function removePriceField() {
+        var pricesContainer = document.getElementById('pricesContainer');
+
+        if (pricesContainer.childElementCount > 1) {
+            pricesContainer.removeChild(pricesContainer.lastChild);
+            priceCounter--;
+        }
+    }
+</script>
+{% endblock %}

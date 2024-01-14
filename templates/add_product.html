@@ -1,193 +1,113 @@
-<html>
-    <head>
-        <!-- Include Select2 from CDN -->
-        <title>Add Product</title>
-        <style>
-            table {
-                width: 100%;
-            }
-            ul {
-                list-style-type: none;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background-color: #333;
-                }
-            
-            li {
-            float: left;
-            }
+<!-- add_hampers.html -->
 
-            li a {
-            display: block;
-            color: white;
-            text-align: center;
-            padding: 14px 16px;
-            text-decoration: none;
-            }
+{% extends 'base.html' %}
 
-            /* Change the link color to #111 (black) on hover */
-            li a:hover {
-            background-color: #111;
-            }
+{% block title %}Add Hampers - CK PO App{% endblock %}
 
-            .active {
-            background-color: #04AA6D;
-            }
+{% block content %}
+<head>
+    <!-- Include Select2 from CDN -->
+    <title>Add Product</title>
+    <style>
+        table {
+            width: 100%;
+        }
 
-            .center_form{
-                width: 40%;
-                margin: auto;
-                margin-top: 20px;
-                background-color: #cccaca;
-                padding: 10px 10px 10px 10px;
-            }
+        .center_form{
+            width: 40%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #cccaca;
+            padding: 10px 10px 10px 10px;
+        }
 
-            .additional-options{
-                display:none;
-            }
-
-            .product-option{
-                float:none;
-                background-color: #ababab;
-            }
-        </style>
-    </head>
-    <body>
-        <ul>
-            <li><a href="/createPO">Create PO</a></li>
-            <li><a href="/viewPOs">View POs</a></li>
-            <li class="active"><a href="/add">Add Products</a></li>
-            <li><a href="/edit">Edit Products</a></li>
-            <li><a href="/summary">Summaries</a></li>
-        </ul>
-        <form action="/submit_addition" method="post" enctype="multipart/form-data">
-            <div class="center_form">
-                <!-- Choose from either product or hampers -->
-                <label>
-                    <input type="radio" name="product-type" value="product" onclick="showOptions('product')"> Product
-                </label>
-                <label>
-                    <input type="radio" name="product-type" value="hampers" onclick="showOptions('hampers')"> Hampers
-                </label>
-
-                <!-- Inputs for product --> <br>
-                <div class="additional-options" id="product-options">
-                    <table style="border:none">
-                        <tr>
-                            <td style="width:30%">Product Name</td>
-                            <td><input type="text" name="name"></td>
-                        </tr>
-                        <tr>
-                            <td>Current Stock</td>
-                            <td><input type="number" id="currentStock" name="currentStock"></td>
-                        </tr>
-                        <tr>
-                            <td>Prices</td>
-                            <td>
-                                <div id="priceInputs">
-                                    <div class="price-input">
-                                        <label for="priceName">Price Name 1:</label>
-                                        <input type="text" name="priceName[]" style="width:20%">
-                                        <label for="priceValue">Price Value 1:</label>
-                                        <input type="number" name="priceValue[]" style="width:20%">
-                                    </div>
+        .product-option{
+            float:none;
+            background-color: #ababab;
+        }
+    </style>
+</head>
+<body>
+    <form action="/submit_addition" method="post" enctype="multipart/form-data">
+        <div class="center_form">
+            <!-- Inputs for product --> <br>
+            <div>
+                <table style="border:none">
+                    <tr>
+                        <td style="width:30%">Product Name</td>
+                        <td><input type="text" name="name"></td>
+                    </tr>
+                    <tr>
+                        <td>Current Stock</td>
+                        <td><input type="number" id="currentStock" name="currentStock"></td>
+                    </tr>
+                    <tr>
+                        <td>Prices</td>
+                        <td>
+                            <div id="priceInputs">
+                                <div class="price-input">
+                                    <label for="priceName">Price Name 1:</label>
+                                    <input type="text" name="priceName[]" style="width:20%">
+                                    <label for="priceValue">Price Value 1:</label>
+                                    <input type="number" name="priceValue[]" style="width:20%">
                                 </div>
-                                <button type="button" onclick="addPriceInput()">Add Price</button>
-                                <button type="button" onclick="removePriceInput()">Remove Price</button>
-                            </td>
-                        </tr>
-                    </table>
-                    
-                    
-                    <!-- submit -->
-                    <br>
-                    <button type="submit">Submit</button>
-                </div>
-
-                <!-- Inputs for hampers -->
-                <div class="additional-options" id="hampers-options">
-                    <table style="border:none">
-                        <tr>
-                            <td style="width:30%">Hampers Name</td>
-                            <td><input type="text" name="hname"></td>
-                        </tr>
-                        <tr>
-                            <td>Hamper Contents</td>
-                            <td>
-                                <ul id="product-list" style="list-style-type: none; padding: 0;">
-                                    {% for product in productsList %}
-                                        <li class="product-option">
-                                            <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
-                                            <label for="product_{{ product._id }}">{{ product.name }}</label>
-                                            <input type="number" name="quantities_{{ product._id }}" class="quantity-input" placeholder="Quantity" style="display: none;">
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Prices</td>
-                            <td><input type="text" name="hprice"></td>
-                        </tr>
-                    </table>
-                    <br>
-                    <input type="submit"></input>
-                </div>
+                            </div>
+                            <button type="button" onclick="addPriceInput()">Add Price</button>
+                            <button type="button" onclick="removePriceInput()">Remove Price</button>
+                        </td>
+                    </tr>
+                </table>
+                
+                
+                <!-- submit -->
+                <br>
+                <button type="submit">Submit</button>
             </div>
-        </form>
+        </div>
+    </form>
 
-        
-        <script>
-            function addPriceInput() {
-                const priceInputs = document.getElementById('priceInputs');
-                const newPriceInput = document.createElement('div');
-                const count = priceInputs.childElementCount + 1;
+    
+    <script>
+        function addPriceInput() {
+            const priceInputs = document.getElementById('priceInputs');
+            const newPriceInput = document.createElement('div');
+            const count = priceInputs.childElementCount + 1;
 
-                newPriceInput.innerHTML = `
-                    <div class="price-input">
-                        <label for="priceName">Price Name ${count}:</label>
-                        <input type="text" name="priceName[]" required style="width:20%">
-                        <label for="priceValue">Price Value ${count}:</label>
-                        <input type="number" name="priceValue[]" required style="width:20%">
-                    </div>
-                `;
+            newPriceInput.innerHTML = `
+                <div class="price-input">
+                    <label for="priceName">Price Name ${count}:</label>
+                    <input type="text" name="priceName[]" required style="width:20%">
+                    <label for="priceValue">Price Value ${count}:</label>
+                    <input type="number" name="priceValue[]" required style="width:20%">
+                </div>
+            `;
 
-                priceInputs.appendChild(newPriceInput);
+            priceInputs.appendChild(newPriceInput);
+        }
+
+        function removePriceInput() {
+            const priceInputs = document.getElementById('priceInputs');
+            if (priceInputs.childElementCount > 1) {
+                priceInputs.removeChild(priceInputs.lastElementChild);
             }
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            var productList = document.getElementById('product-list');
 
-            function removePriceInput() {
-                const priceInputs = document.getElementById('priceInputs');
-                if (priceInputs.childElementCount > 1) {
-                    priceInputs.removeChild(priceInputs.lastElementChild);
-                }
-            }
-            document.addEventListener('DOMContentLoaded', function () {
-                var productList = document.getElementById('product-list');
+            productList.addEventListener('change', function (event) {
+                var target = event.target;
 
-                productList.addEventListener('change', function (event) {
-                    var target = event.target;
+                if (target.type === 'checkbox') {
+                    var quantityInput = target.parentElement.querySelector('.quantity-input');
 
-                    if (target.type === 'checkbox') {
-                        var quantityInput = target.parentElement.querySelector('.quantity-input');
-
-                        if (target.checked) {
-                            quantityInput.style.display = 'inline-block';
-                        } else {
-                            quantityInput.style.display = 'none';
-                        }
+                    if (target.checked) {
+                        quantityInput.style.display = 'inline-block';
+                    } else {
+                        quantityInput.style.display = 'none';
                     }
-                });
+                }
             });
-            function showOptions(productType) {
-                // Hide all additional options initially
-                document.querySelectorAll('.additional-options').forEach(function(option) {
-                    option.style.display = 'none';
-                });
-        
-                // Show options based on the selected gender
-                document.getElementById(productType + '-options').style.display = 'block';
-            }
-        </script>
-    </body>
-</html>
+        });
+    </script>
+</body>
+{% endblock %}

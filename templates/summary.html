@@ -1,91 +1,59 @@
-<html>
-    <head>
-        <title>View POs</title>
-        <style>
-            form {
-                width: 40%;
-                margin: auto;
-                margin-top: 20px;
-                background-color: #cccaca;
-                padding: 10px 10px 10px 10px;
-            }
+{% extends 'base.html' %}
 
-            table,tr,td,th{
-                border: solid 1px black;
-                border-collapse: collapse;
-                text-align: center;
-            }
+{% block title %}Summary{% endblock %}
 
-            table {
-                width: 100%;
-            }
-            ul {
-                list-style-type: none;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background-color: #333;
-            }
+{% block content %}
+<head>
+    <style>
+        form {
+            width: 40%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #cccaca;
+            padding: 10px 10px 10px 10px;
+        }
 
-            li {
-                float: left;
-            }
+        table,tr,td,th{
+            border: solid 1px black;
+            border-collapse: collapse;
+            text-align: center;
+        }
 
-            li a {
-                display: block;
-                color: white;
-                text-align: center;
-                padding: 14px 16px;
-                text-decoration: none;
-            }
+        table {
+            width: 100%;
+        }
+        .additional-options{
+            display:none;
+        }
+        .order-container{
+            width: 40%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #cccaca;
+            padding: 10px 10px 10px 10px;
+        }
+    </style>
+</head>
+<body> 
+    <!-- Date selection -->
+    <form action="/summary" method="POST">
+        <label for="viewType">Select summary:</label>
+        <select id="viewType" name="viewType" required>
+            <option value="" disabled selected>Select an option</option>
+            <option value="productSort">Product Summary</option>
+            <option value="customerSort">Customer Summary</option>
+        </select>
 
-            li a:hover {
-                background-color: #111;
-            }
-            .active {
-                background-color: #04AA6D;
-            }
-            .additional-options{
-                display:none;
-            }
-            .order-container{
-                width: 40%;
-                margin: auto;
-                margin-top: 20px;
-                background-color: #cccaca;
-                padding: 10px 10px 10px 10px;
-            }
-        </style>
-    </head>
-    <body>
-        <!-- Header -->
-        <ul> 
-            <li><a href="/createPO">Create PO</a></li>
-            <li><a href="/viewPOs">View POs</a></li>
-            <li><a href="/add">Add Products</a></li>
-            <li><a href="/edit">Edit Products</a></li>
-            <li  class="active"><a href="/summary">Summaries</a></li>
-        </ul>
-        
-        <!-- Date selection -->
-        <form action="/summary" method="POST">
-            <label for="viewType">Select summary:</label>
-            <select id="viewType" name="viewType" required>
-                <option value="" disabled selected>Select an option</option>
-                <option value="productSort">Product Summary</option>
-                <option value="customerSort">Customer Summary</option>
-            </select>
-    
-            <div>
-                <label for="startDateInput">Start Date:</label>
-                <input type="date" id="startDateInput" name="startDate" required> <br>
-                <label for="endDateInput">End Date:</label>
-                <input type="date" id="endDateInput" name="endDate" required> <br>
-            </div>
-    
-            <button type="submit">View Orders</button>
-        </form>
-    </body>
-    <script>
-    </script>
-</html>
+        <div>
+            <label for="startDateInput">Start Date:</label>
+            <input type="date" id="startDateInput" name="startDate" required> <br>
+            <label for="endDateInput">End Date:</label>
+            <input type="date" id="endDateInput" name="endDate" required> <br>
+        </div>
+
+        <button type="submit">View Orders</button>
+    </form>
+</body>
+<script>
+</script>
+{% endblock %}

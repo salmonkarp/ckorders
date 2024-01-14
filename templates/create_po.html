@@ -1,177 +1,196 @@
-<html>
-    <head>
-        <title>Create PO</title>
-        <style>
-            ul {
-                list-style-type: none;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background-color: #333;
-                }
+{% extends 'base.html' %}
 
-            li {
-            float: left;
-            }
+{% block title %}Create PO{% endblock %}
 
-            li a {
-            display: block;
-            color: white;
-            text-align: center;
-            padding: 14px 16px;
-            text-decoration: none;
-            }
-
-            /* Change the link color to #111 (black) on hover */
-            li a:hover {
-            background-color: #111;
-            }
-            .active {
-            background-color: #04AA6D;
-            }
-            .center_form{
-                width: 30%;
-                margin: auto;
-                margin-top: 20px;
-                background-color: #cccaca;
-                padding: 10px 10px 10px 10px;
-            }
-            .product-option{
-                float:none;
-                background-color: #ababab;
-            }
-            .additional-options{
-                display: none;
-            }
-            .hiddenDiv{
-                display:none;
-                padding-left: 50px;
-            }
-        </style>
-    </head>
-    <body>
-        <ul>
-            <li><a href="/createPO" class="active">Create PO</a></li>
-            <li><a href="/viewPOs">View POs</a></li>
-            <li><a href="/add">Add Products</a></li>
-            <li><a href="/edit">Edit Products</a></li>
-            <li><a href="/summary">Summaries</a></li>
-        </ul>
-        <form action="/createPOSubmit" enctype="multipart/form-data" method="post">
-            <div class="center_form">
-                <p>Create PO</p>
-
-                <!-- Choose from either product or hampers -->
-                <label>
-                    <input type="radio" name="customer-type" value="new" onclick="showOptions('new')" required> New Customer
-                </label>
-                <label>
-                    <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')" required> Existing Customer
-                </label> <br>
-
-                <!-- New Customer Option -->
-                <div class="additional-options" id="new-options">
-                    <label for="customer_name">Customer Name:</label>
-                    <input type="text" name="customer_name"> <br>
-                    <label for="address">Delivery Address:</label>
-                    <input type="text" name="address">
-                </div>
-
-                <!-- Existing Customer Option -->
-                <div class="additional-options" id="existing-options">
-                    <label for="existing_customer_id">Select existing customer:</label>
-                    <select name="existing_customer_id">
-                        <option value="">-- Select existing customer --</option>
-                        {% for customer in customersList %}
-                            <option value="{{ customer._id }}">{{ customer.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <br>
-                
-                <!-- Date of delivery -->
-                <label for="delivery_date">Date of delivery:</label>
-                <input type="date" name="delivery_date" value="{{current_date}}" required>
-                <br>
-
-                <!-- Input of products -->
-                <p>Select products:</p>
-                <ul id="product-list" style="list-style-type: none; padding: 0;">
-                    {% for product in productsList %}
-                        <li class="product-option">
-                            <input type="checkbox" name="products[]" value="{{ product._id }}" class="checkboxClass" onchange="toggleDiv(this)">
-                            <label for="product_{{ product._id }}">{{ product.name }}</label>
-                            <br>
-                            
-                            <div class="hiddenDiv">
-                                <label>Quantity: </label>
-                                <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input">
-                                <br>
-                                <input type="radio" id="{{ product._id }}_normal_price" name="{{ product._id }}_price_type" value="normal">
-                                <label for="{{ product._id }}_normal_price">Normal Price: Rp{{ product.price }}</label>
-                                <br>
-
-                                <input type="radio" id="{{ product._id }}_custom_price" name="{{ product._id }}_price_type" value="custom">
-                                <label for="{{ product._id }}_custom_price">Custom Price:</label>
-                                <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price"><br>
-                            
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul>
-
-                <!-- Input of hampers -->
-                <p>Select hampers:</p>
-                <ul id="hampers-list" style="list-style-type: none; padding: 0;">
-                    {% for hamper in hampersList %}
-                        <li class="product-option">
-                            <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" class="checkboxClass" onchange="toggleDiv(this)">
-                            <label for="hamper_{{ hamper._id }}">{{ hamper.name }}</label>
-                            <br>
-                            
-                            <div class="hiddenDiv">
-                                <label>Quantity: </label>
-                                <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input">
-                                <br>
-                                <input type="radio" id="{{ hamper._id }}_normal_price" name="{{ hamper._id }}_price_type" value="normal">
-                                <label for="{{ hamper._id }}_normal_price">Normal Price: Rp{{ hamper.price }}</label>
-                                <br>
-
-                                <input type="radio" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_price_type" value="custom">
-                                <label for="{{ hamper._id }}_custom_price">Custom Price:</label>
-                                <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price"><br>
-                            
-                            </div>
-                        </li>
-                    {% endfor %}
-                </ul><br>
-
-                <input type="submit" value="Create PO">
-            </div>
-        </form>
-    </body>
-    <script>
-        // to show options of new or existing customer
-        function showOptions(customerType) {
-                // Hide all additional options initially
-                document.querySelectorAll('.additional-options').forEach(function(option) {
-                    option.style.display = 'none';
-                });
-        
-                // Show options based on the selected gender
-                document.getElementById(customerType + '-options').style.display = 'block';
-            }
-
-        // to show Quantity inputs based on checkboxes
-        function toggleDiv(checkbox) {
-            var index = Array.from(document.getElementsByClassName('checkboxClass')).indexOf(checkbox);
-            var divs = document.getElementsByClassName('hiddenDiv');
-
-            if (checkbox.checked) {
-                divs[index].style.display = 'block';
-            } else {
-                divs[index].style.display = 'none';
-            }
+{% block content %}
+<head>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
         }
-    </script>
-</html>
+
+        .center_form {
+            width: 30%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        .product-option {
+            float: none;
+            background-color: #e0e0e0;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .additional-options {
+            display: none;
+            margin-top: 2.5%;
+        }
+
+        .hiddenDiv {
+            display: none;
+            padding-left: 50px;
+        }
+
+        input[type="submit"] {
+            background-color: #04AA6D;
+            color: #ffffff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #047456;
+        }
+
+        ul#product-list, ul#hampers-list{
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <form action="/createPOSubmit" enctype="multipart/form-data" method="post">
+        <div class="center_form">
+            <p>Create PO</p>
+
+            <!-- Choose from either product or hampers -->
+            <label>
+                <input type="radio" name="customer-type" value="new" onclick="showOptions('new')" required> New Customer
+            </label>
+            <label>
+                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')" required> Existing Customer
+            </label> <br>
+
+            <!-- New Customer Option -->
+            <div class="additional-options" id="new-options">
+                <label for="customer_name">Customer Name:</label>
+                <input type="text" name="customer_name"> <br>
+                <label for="address">Delivery Address:</label>
+                <input type="text" name="address">
+            </div>
+
+            <!-- Existing Customer Option -->
+            <div class="additional-options" id="existing-options">
+                <label for="existing_customer_id">Select existing customer:</label>
+                <select name="existing_customer_id">
+                    <option value="">-- Select existing customer --</option>
+                    {% for customer in customersList %}
+                        <option value="{{ customer._id }}">{{ customer.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <br>
+            
+            <!-- Date of delivery -->
+            <label for="delivery_date">Date of delivery:</label>
+            <input type="date" name="delivery_date" value="{{current_date}}" required>
+            <br>
+
+            <!-- Input of products -->
+            <p>Select products:</p>
+            <ul id="product-list" style="list-style-type: none; padding: 0;">
+                {% for product in productsList %}
+                    <li class="product-option">
+                        <input type="checkbox" name="products[]" value="{{ product._id }}" class="checkboxClass" onchange="toggleDiv(this)">
+                        <label for="product_{{ product._id }}">{{ product.name }}</label>
+                        <div class="hiddenDiv" style="display: none;">
+                            <label>Quantity: </label>
+                            <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;" min="1">
+
+                            <label>Choose Price:</label> <br>
+                            <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="width:45%; font-size: 14px;">
+                                {% for price in product.prices %}
+                                    <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
+                                {% endfor %}
+                                <option value="custom">Custom Price</option>
+                            </select>
+                            <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;"><br>
+                            <label>Product Discount (in %)</label>
+                            <input type="number" name="{{ product._id }}_product_discount" value="0" min="0">
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+
+            <!-- Input of hampers -->
+            <p>Select hampers:</p>
+            <ul id="hampers-list" style="list-style-type: none; padding: 0;">
+                {% for hamper in hampersList %}
+                    <li class="product-option">
+                        <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" class="checkboxClass" onchange="toggleDiv(this)">
+                        <label for="hamper_{{ hamper._id }}">{{ hamper.name }}</label>
+                        <div class="hiddenDiv" style="display: none;">
+                            <label>Quantity: </label>
+                            <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" style="display: none;">
+
+                            <label>Choose Price:</label> <br>
+                            <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="width:45%">
+                                {% for price in hamper.prices %}
+                                    <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
+                                {% endfor %}
+                                <option value="custom">Custom Price</option>
+                            </select>
+                            <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;"><br>
+                            <label>Hamper Discount (in %)</label>
+                            <input type="number" name="{{ hamper._id }}_hamper_discount" value="0" min="0">
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+            <label> Order Discount (in %) </label>
+            <input type="number" value="0" name="order-discount">
+            <input type="submit" value="Create PO">
+        </div>
+    </form>
+</body>
+<script>
+    // to show options of new or existing customer
+    function showOptions(customerType) {
+        // Hide all additional options initially
+        document.querySelectorAll('.additional-options').forEach(function(option) {
+            option.style.display = 'none';
+        });
+
+        // Show options based on the selected gender
+        document.getElementById(customerType + '-options').style.display = 'block';
+    }
+
+    // to show Quantity inputs and toggle custom price input based on checkboxes
+    function toggleDiv(checkbox) {
+        var div = checkbox.parentElement.querySelector('.hiddenDiv');
+        var quantityInput = div.querySelector('input[name^="p_quantities"], input[name^="h_quantities"]');
+        var customPriceInput = div.querySelector('input[type="number"][name$="_custom_price"]');
+        
+        if (checkbox.checked) {
+            div.style.display = 'block';
+            quantityInput.style.display = 'block';
+            toggleCustomPriceInput(div.querySelector('select'), customPriceInput);
+        } else {
+            div.style.display = 'none';
+            quantityInput.style.display = 'none';
+            customPriceInput.style.display = 'none';
+        }
+    }
+
+    // to toggle custom price input based on selected option
+    function toggleCustomPriceInput(select, customPriceInput) {
+        if (select.value === 'custom') {
+            customPriceInput.style.display = 'block';
+        } else {
+            customPriceInput.style.display = 'none';
+        }
+    }
+</script>
+
+{% endblock %}

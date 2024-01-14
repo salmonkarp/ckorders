@@ -1,40 +1,28 @@
-<html>
-    <head>
-        <title>Menu</title>
-        <style>
-            ul {
-                list-style-type: none;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background-color: #333;
-                }
+{% extends 'base.html' %}
 
-                li {
-                float: left;
-                }
+{% block title %}Home{% endblock %}
 
-                li a {
-                display: block;
-                color: white;
-                text-align: center;
-                padding: 14px 16px;
-                text-decoration: none;
-                }
+{% block content %}
+<head>
+    <style>
+        .welcome-container {
+            width: 60%;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
 
-                /* Change the link color to #111 (black) on hover */
-                li a:hover {
-                background-color: #111;
-                }
-        </style>
-    </head>
-    <body>
-        <ul>
-            <li><a href="/createPO">Create PO</a></li>
-            <li><a href="/viewPOs">View POs</a></li>
-            <li><a href="/add">Add Products</a></li>
-            <li><a href="/edit">Edit Products</a></li>
-            <li><a href="/summary">Summaries</a></li>
-          </ul>
-    </body>
-</html>
+        h2 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-container">
+        <h2>Welcome to CK PO App!</h2>
+        <p>Select the options at the header to start.</p>
+    </div>
+</body>
+{% endblock %}

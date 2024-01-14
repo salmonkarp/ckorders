@@ -1,118 +1,90 @@
-<html>
-    <head>
-        <title>Menu</title>
-        <style>
-            ul {
-                list-style-type: none;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background-color: #333;
-                }
+{% extends 'base.html' %}
 
-                li {
-                float: left;
-                }
+{% block title %}Home{% endblock %}
 
-                li a {
-                display: block;
-                color: white;
-                text-align: center;
-                padding: 14px 16px;
-                text-decoration: none;
-                }
-
-                /* Change the link color to #111 (black) on hover */
-                li a:hover {
-                background-color: #111;
-                }
-                .center_form{
-                    width: 40%;
-                    margin: auto;
-                    margin-top: 20px;
-                    background-color: #cccaca;
-                    padding: 10px 10px 10px 10px;
-                }
-        </style>
-    </head>
-    <body>
-        <ul>
-            <li><a href="/createPO">Create PO</a></li>
-            <li><a href="/viewPOs">View POs</a></li>
-            <li><a href="/add">Add Products</a></li>
-            <li><a href="/edit">Edit Products</a></li>
-            <li><a href="/summary">Summaries</a></li>
-        </ul>
-        <form action="/edit_product_submit/{{product['_id']}}" method="post" enctype="multipart/form-data">
-            <div class="center_form">
-                <table style="border:none">
-                    <tr>
-                        <td style="width:30%">Product Name</td>
-                        <td><input type="text" name="name" value="{{product['name']}}"></td>
-                    </tr>
-                    <tr>
-                        <td>Current Stock</td>
-                        <td><input type="number" id="currentStock" name="currentStock" value="{{product['currentStock']}}"></td>
-                    </tr>
-                    <tr>
-                        <td>Prices</td>
-                        <td>
-                            <div id="pricesContainer">
-                                {% for loop_price in range(product.prices|length) %}
-                                    <div>
-                                        <input type="hidden" name="priceId" value="{{ product.prices[loop_price]._id }}">
-                                        <label for="priceName{{ loop_price }}">Price Name:</label>
-                                        <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ product.prices[loop_price].name }}" required>
-                                        <br>
-                        
-                                        <label for="priceValue{{ loop_price }}">Price Value:</label>
-                                        <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ product.prices[loop_price].value }}" required>
-                                        <br>
-                                    </div>
-                                {% endfor %}
-                            </div>                        
-
-                            <button type="button" onclick="addPriceField()">Add Price</button>
-                            <button type="button" onclick="removePriceField()">Remove Last Price</button>
-                        </td>
-                    </tr>
-                </table>
-                
-                
-                <!-- submit -->
-                <br>
-                <button type="submit">Update Product</button>
-            </div>
-        </form>
-    </body>
-    <script>
-        var priceCounter = {{ product.prices|length }};
-        
-        function addPriceField() {
-            priceCounter++;
-            var pricesContainer = document.getElementById('pricesContainer');
-            var newPriceField = document.createElement('div');
-
-            newPriceField.innerHTML = `
-                <label for="priceName${priceCounter}">Price Name:</label>
-                <input type="text" name="priceName" required>
-                <br>
-
-                <label for="priceValue${priceCounter}">Price Value:</label>
-                <input type="number" name="priceValue" required>
-                <br>
-            `;
-
-            pricesContainer.appendChild(newPriceField);
+{% block content %}
+<head>
+    <style>
+        .center_form{
+            width: 40%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #cccaca;
+            padding: 10px 10px 10px 10px;
         }
+    </style>
+</head>
+<body>
+    <form action="/edit_product_submit/{{product['_id']}}" method="post" enctype="multipart/form-data">
+        <div class="center_form">
+            <table style="border:none">
+                <tr>
+                    <td style="width:30%">Product Name</td>
+                    <td><input type="text" name="name" value="{{product['name']}}"></td>
+                </tr>
+                <tr>
+                    <td>Current Stock</td>
+                    <td><input type="number" id="currentStock" name="currentStock" value="{{product['currentStock']}}"></td>
+                </tr>
+                <tr>
+                    <td>Prices</td>
+                    <td>
+                        <div id="pricesContainer">
+                            {% for loop_price in range(product.prices|length) %}
+                                <div>
+                                    <input type="hidden" name="priceId" value="{{ product.prices[loop_price]._id }}">
+                                    <label for="priceName{{ loop_price }}">Price Name:</label>
+                                    <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ product.prices[loop_price].name }}" required>
+                                    <br>
+                    
+                                    <label for="priceValue{{ loop_price }}">Price Value:</label>
+                                    <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ product.prices[loop_price].value }}" required>
+                                    <br>
+                                </div>
+                            {% endfor %}
+                        </div>                        
 
-        function removePriceField() {
-            var pricesContainer = document.getElementById('pricesContainer');
+                        <button type="button" onclick="addPriceField()">Add Price</button>
+                        <button type="button" onclick="removePriceField()">Remove Last Price</button>
+                    </td>
+                </tr>
+            </table>
+            
+            
+            <!-- submit -->
+            <br>
+            <button type="submit">Update Product</button>
+        </div>
+    </form>
+</body>
+<script>
+    var priceCounter = {{ product.prices|length }};
+    
+    function addPriceField() {
+        priceCounter++;
+        var pricesContainer = document.getElementById('pricesContainer');
+        var newPriceField = document.createElement('div');
 
-            if (pricesContainer.childElementCount > 1) {
-                pricesContainer.removeChild(pricesContainer.lastChild);
-                priceCounter--;
-            }
+        newPriceField.innerHTML = `
+            <label for="priceName${priceCounter}">Price Name:</label>
+            <input type="text" name="priceName" required>
+            <br>
+
+            <label for="priceValue${priceCounter}">Price Value:</label>
+            <input type="number" name="priceValue" required>
+            <br>
+        `;
+
+        pricesContainer.appendChild(newPriceField);
+    }
+
+    function removePriceField() {
+        var pricesContainer = document.getElementById('pricesContainer');
+
+        if (pricesContainer.childElementCount > 1) {
+            pricesContainer.removeChild(pricesContainer.lastChild);
+            priceCounter--;
         }
-    </script>
-</html>
+    }
+</script>
+{% endblock %}

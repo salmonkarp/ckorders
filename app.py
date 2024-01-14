@@ -7,6 +7,7 @@ from flask_cors import CORS
 from bson.objectid import ObjectId
 from datetime import datetime
 import pprint
+import locale
 import os
 import pymongo
 import sqlite3
@@ -19,69 +20,23 @@ def open_DB(db):
     connection=sqlite3.connect(db)
     connection.row_factory = sqlite3.Row
     return connection
-
-pipeline = [
-        {
-            '$unwind': 
-                {'path':'$products',
-                 'preserveNullAndEmptyArrays': True
-                }
-        },
-        {
-            '$lookup': {
-                'from': 'Products',
-                'localField': 'products.product_id',
-                'foreignField': '_id',
-                'as': 'product_details'
-            }
-        },
-        {
-            '$unwind': {
-                'path':'$hampers',
-                 'preserveNullAndEmptyArrays': True
-            }
-        },
-        {
-            '$lookup': {
-                'from': 'Hampers',
-                'localField': 'hampers.product_id',
-                'foreignField': '_id',
-                'as': 'hamper_details'
-            }
-        },
-        {
-        "$lookup": {
-                "from": "Customers",
-                "localField": "custID",
-                "foreignField": "_id",
-                "as": "customer_details"
-            }
-        },
-        {
-            '$group': {
-                '_id': '$_id',
-                'order_id': {'$first': '$_id'},
-                'customer_name': {"$first": {"$arrayElemAt": ["$customer_details.name", 0]}},
-                'customer_address': {"$first": {"$arrayElemAt": ["$customer_details.address", 0]}},
-                'deliveryDate': {'$first': '$deliveryDate'},
-                "products": {"$addToSet": {
-                    "name": {"$arrayElemAt": ["$product_details.name", 0]}, 
-                    "price": {"$ifNull": ["$products.custom_price", {"$arrayElemAt": ["$product_details.price", 0]}]},
-                    "quantity": "$products.quantity"
-                    }},
-                "hampers": {"$addToSet": {
-                    "name": {"$arrayElemAt": ["$hamper_details.name", 0]}, 
-                    "price": {"$ifNull": ["$hampers.custom_price", {"$arrayElemAt": ["$hamper_details.price", 0]}]},
-                    "quantity": "$hampers.quantity"}}
-            }
-        },
-        {
-            "$sort": {
-                "deliveryDate": 1
-            }
-        }
-    ]
-
+def format_currency(amount):
+    locale.setlocale(locale.LC_ALL, 'id_ID')  # Set the locale to Indonesian
+    return locale.currency(amount, grouping=True)
+def filter_orders_by_dates(orders, target_dates):
+    return [order for order in orders if order['deliveryDate'] in target_dates]
+def calculate_order_total(po):
+    order_total = 0.0
+    for product in po['products'] + po['hampers']:
+        price_value = product['price_value']
+        quantity = product['quantity']
+        discount_value = product['discount'] * product['price_value'] / 100.0
+        item_subtotal = (price_value - discount_value) * quantity
+        print(item_subtotal)
+        order_total += item_subtotal
+    return order_total
+        
+        
 
 # object creation
 app = Flask(__name__)
@@ -89,86 +44,106 @@ database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 print(MCString)
 MClient = pymongo.MongoClient(MCString)['CK']
+app.jinja_env.filters['format_currency'] = format_currency
 CORS(app)  # Enable CORS for all routes and origins
 
 # Configure FLASK_DEBUG from environment variable
 app.config['DEBUG'] = os.environ.get('FLASK_DEBUG')
+
 
 # menu
 @app.route("/",methods=["GET"])
 def root():
     return render_template('menu.html')
 
-# add object get
-@app.route("/add",methods=["GET"])
-def add():
+@app.route("/add_product",methods=["GET"])
+def add_product():
+    return render_template("add_product.html")
+
+@app.route("/modify",methods=["GET"])
+def modify():
+    return render_template("modify.html")
+
+# add hampers get
+@app.route("/add_hampers",methods=["GET"])
+def add_hampers():
     ckProducts = MClient['Products']
     showIDProjection = {
         '_id':True,
         'name':True
     }
     productsList = list(ckProducts.find({},showIDProjection))
-    return render_template("add_product.html",productsList=productsList)
+    return render_template("add_hampers.html",productsList=productsList)
 
-# add object post
+# add product post
 @app.route("/submit_addition",methods=["POST"])
-def add_submit():
+def add_product_submit():
     product_type = request.form.get('product-type')
-    try:
-        if product_type == 'product':
-            print('Product selected')
-            ckProducts = MClient['Products']
-            new_product = {
-                'name': request.form.get('name'),
-                'currentStock': int(request.form['currentStock']),
-                'prices':[]
-            }
-            
-            # Extract price names and values from the form
-            price_names = request.form.getlist('priceName[]')
-            price_values = request.form.getlist('priceValue[]')
-
-            # Create a list of dictionaries for prices
-            for name, value in zip(price_names, price_values):
-                new_product['prices'].append({
-                    'name': name,
-                    'value': float(value)
-                })
-            ckProducts.insert_one(new_product)
-            return redirect('/')
-        
-        
-        elif product_type == 'hampers':
-            hamper_name = request.form.get('hname')
-            selected_products = request.form.getlist('products[]')
-            ckHampers = MClient['Hampers']
-            hamper = {
-                'name': hamper_name,
-                'price': float(request.form.get('hprice')),
-                'items': []
-            }
-
-            for product_id in selected_products:
-                quantity_key = 'quantities_' + product_id
-                quantity = int(request.form.get(quantity_key, 0))
-                
-                if quantity > 0:
-                    hamper['items'].append({
-                        'product_id': ObjectId(product_id),
-                        'quantity': quantity
-                    })
-
-            # Insert the new hamper into the MongoDB database
-            ckHampers.insert_one(hamper)
-            return redirect('/')
+    ckProducts = MClient['Products']
+    new_product = {
+        'name': request.form.get('name'),
+        'currentStock': int(request.form['currentStock']),
+        'prices':[]
+    }
     
+    # Extract price names and values from the form
+    price_names = request.form.getlist('priceName[]')
+    price_values = request.form.getlist('priceValue[]')
+
+    # Create a list of dictionaries for prices
+    for name, value in zip(price_names, price_values):
+        new_product['prices'].append({
+            'name': name,
+            'value': float(value)
+        })
+    ckProducts.insert_one(new_product)
+    return redirect('/edit_product')
+
+# add hampers post
+@app.route("/submit_addition_hampers",methods=["POST"])
+def add_hampers_submit():
+    hamper_name = request.form.get('hname')
+    selected_products = request.form.getlist('products[]')
+    ckHampers = MClient['Hampers']
     
-    except Exception as e:
-        return render_template('error.html',error=e)
+    # Extract price names and values from the form
+    price_names = request.form.getlist('priceName[]')
+    price_values = request.form.getlist('priceValue[]')
+    
+    hamper = {
+        'name': hamper_name,
+        'prices': [],
+        'items': []
+    }
+
+    for product_id in selected_products:
+        quantity_key = 'quantities_' + product_id
+        quantity = int(request.form.get(quantity_key, 0))
+        
+        if quantity > 0:
+            hamper['items'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity
+            })
+    for name, value in zip(price_names, price_values):
+        hamper['prices'].append({
+            'name': name,
+            'value': float(value)
+        })
+        
+    # Insert the new hamper into the MongoDB database
+    ckHampers.insert_one(hamper)
+    return redirect('/edit_hamper')
 
 # view object get
-@app.route("/edit",methods=["GET"])
-def edit_view():
+@app.route("/edit_product",methods=["GET"])
+def edit_view_product():
+    productsList = list(MClient['Products'].find().sort('name',pymongo.ASCENDING))
+    return render_template("edit_view_product.html", productsList = productsList)
+
+# view object get
+@app.route("/edit_hamper",methods=["GET"])
+def edit_view_hamper():
     ckHampers = MClient['Hampers']
     pipeline = pipeline = [
         {
@@ -186,7 +161,7 @@ def edit_view():
             '$project': {
                 '_id': 1,
                 'name': 1,
-                'price': 1,
+                'prices':1,
                 'item': {
                     'product_id': '$itemsDetails._id',
                     'quantity': {'$arrayElemAt': ['$items.quantity', {'$indexOfArray': ['$items.product_id', '$itemsDetails._id']}]},
@@ -199,7 +174,7 @@ def edit_view():
                 '_id': {
                     '_id': '$_id',
                     'name': '$name',
-                    'price': '$price'
+                    'prices':'$prices'
                 },
                 'items': {
                     '$push': '$item'
@@ -210,15 +185,19 @@ def edit_view():
             '$project': {
                 '_id': '$_id._id',
                 'name': '$_id.name',
-                'price': '$_id.price',
+                'prices': '$_id.prices',
                 'items': 1
+            }
+        },
+        {
+            '$sort':{
+                'name':pymongo.ASCENDING
             }
         }
     ]
 
     hampersList = list(ckHampers.aggregate(pipeline))
-    productsList = list(MClient['Products'].find())
-    return render_template("edit_view.html", hampersList = hampersList, productsList = productsList)
+    return render_template("edit_view_hamper.html", hampersList = hampersList)
 
 # edit product get
 @app.route("/edit_product/<productID>",methods=["GET"])
@@ -242,7 +221,7 @@ def edit_product_submit(productID):
         price_name = request.form.getlist('priceName')[i]
         price_value = float(request.form.getlist('priceValue')[i])
         prices.append({"name": price_name, "value": price_value})
-    print(prices)
+    
     # Update the product data
     ckConn.update_many({
         '_id':ObjectId(productID)
@@ -253,7 +232,7 @@ def edit_product_submit(productID):
             'prices': prices
         }
     })
-    return redirect('/')
+    return redirect('/edit_product')
 
 # handle delete product get
 @app.route("/delete_product/<productID>",methods=["GET"])
@@ -262,7 +241,7 @@ def delete_product(productID):
     ckConn.delete_many({
         '_id':ObjectId(productID)
     })
-    return redirect('/')
+    return redirect('/edit_product')
 
 # edit hampers get
 @app.route("/edit_hampers/<hampersID>",methods=["GET"])
@@ -289,7 +268,7 @@ def edit_hampers_submit(hampersID):
     all_products = list(MClient['Products'].find())
     hamper = {
         'name': hamper_name,
-        'price': float(request.form.get('hprice')),
+        'prices': [],
         'items': []
     }
 
@@ -303,13 +282,18 @@ def edit_hampers_submit(hampersID):
                 'product_name': product['name'],
                 'quantity': new_quantity
             })
-
+    
+    for i in range(len(request.form.getlist('priceName'))):
+        price_name = request.form.getlist('priceName')[i]
+        price_value = float(request.form.getlist('priceValue')[i])
+        hamper['prices'].append({"name": price_name, "value": price_value})
+    
     ckHampers.update_one({
         '_id': ObjectId(hampersID),
     },{
         '$set':hamper
     })
-    return redirect('/')
+    return redirect('/edit_hamper')
 
 @app.route("/delete_hampers/<hampersID>",methods=["GET"])
 def delete_hampers(hampersID):
@@ -317,7 +301,7 @@ def delete_hampers(hampersID):
     ckHampers.delete_many({
         '_id':ObjectId(hampersID)
     })
-    return redirect('/')
+    return redirect('/edit_hamper')
 
 @app.route("/createPO",methods=['GET'])
 def createPO():
@@ -329,8 +313,7 @@ def createPO():
     return render_template('create_po.html',customersList = customersList, productsList = productsList, hampersList = hampersList, current_date = current_date)
 
 @app.route("/createPOSubmit",methods=["POST"])
-def createPOSubmit():
-    
+def createPOSubmit():   
     #handling customers
     existingCustomerID = request.form.get('existing_customer_id')
     if existingCustomerID:
@@ -348,6 +331,7 @@ def createPOSubmit():
 
     #handling date
     deliveryDate = request.form.get('delivery_date')
+    orderDiscount = float(request.form.get('order-discount'))
     
     #taking products and hampers list
     selected_products = request.form.getlist('products[]')
@@ -361,97 +345,138 @@ def createPOSubmit():
         'hampers':[]
     }
 
+    if orderDiscount > 0:
+        OrderObject['orderDiscount']:orderDiscount
+    
     #adding products
     for product_id in selected_products:
         quantity_key = 'p_quantities_' + product_id
         quantity = int(request.form.get(quantity_key, 0))
-        cutstom_price_key = product_id + "_custom_price"
-        custom_price = request.form.get(cutstom_price_key, 0)
-        if quantity > 0 and custom_price:
-            OrderObject['products'].append({
+        discount_key = product_id + '_product_discount'
+        discount = float(request.form.get(discount_key, 0))
+        price_type = request.form.get(product_id + '_price_type', '')
+        
+        if quantity > 0:
+            product_object = {
                 'product_id': ObjectId(product_id),
                 'quantity': quantity,
-                'custom_price':float(custom_price)
-            })
-        elif quantity > 0:
-            OrderObject['products'].append({
-                'product_id': ObjectId(product_id),
-                'quantity': quantity,
-            })
+                'price_type': price_type
+            }
+        
+        if price_type=='custom':
+            custom_price_key = product_id + "_custom_price"
+            custom_price = float(request.form.get(custom_price_key, 0))
+            product_object['custom_price'] = custom_price
+        
+        if discount > 0:
+            product_object['discount'] = discount
+        
+        OrderObject['products'].append(product_object)
 
     #adding hampers
     for product_id in selected_hampers:
         quantity_key = 'h_quantities_' + product_id
         quantity = int(request.form.get(quantity_key, 0))
-        cutstom_price_key = product_id + "_custom_price"
-        custom_price = request.form.get(cutstom_price_key, 0)
+        discount_key = product_id + '_hamper_discount'
+        discount = float(request.form.get(discount_key, 0))
+        price_type = request.form.get(product_id + '_price_type', '')
         
-        if quantity > 0 and custom_price:
-            OrderObject['hampers'].append({
-                'product_id': ObjectId(product_id),
-                'quantity': quantity,
-                'custom_price':float(custom_price)
-            })
-        elif quantity > 0:
-            OrderObject['hampers'].append({
-                'product_id': ObjectId(product_id),
-                'quantity': quantity,
-            })
+        if quantity > 0:
+            hamper_entry = {
+            'product_id': ObjectId(product_id),
+            'quantity': quantity,
+            'price_type': price_type
+        }
+            
+        if price_type == 'custom':
+            custom_price_key = product_id + "_custom_price"
+            custom_price = float(request.form.get(custom_price_key, 0))
+            hamper_entry['custom_price'] = custom_price
+
+        if discount > 0:
+            hamper_entry['discount'] = discount
+        
+        OrderObject['hampers'].append(hamper_entry)
 
     ckPOs = MClient['POs']
     ckPOs.insert_one(OrderObject)
 
     print(OrderObject)
-    return redirect('/viewPOs')
+    return redirect('/')
 
 @app.route("/viewPOs",methods=["GET","POST"])
 def lookup():
-    POData = MClient['POs']
-    cust_pipeline = pipeline
+    orders_collection = MClient['POs']
+    products_collection = MClient['Products']  # Assuming this is the correct name for the Products collection
+    hampers_collection = MClient['Hampers']
+    customers_collection = MClient['Customers']
     
-    # handling specific date selection
-    if request.method == "POST":
-        view_type = request.form.get('viewType')
+    result = []
 
-        if view_type == 'specificDate':
-            specific_date = request.form.get('specificDate')
-            # Filter orders based on specific date
-            cust_pipeline = [{
-                "$match": {
-                    "deliveryDate": specific_date
-                }
-            }] + pipeline
-        
-        elif view_type == 'dateRange':
-            start_date = request.form.get('startDate')
-            end_date = request.form.get('endDate')
-            # Filter orders based on date range
-            cust_pipeline = [{
-                "$match": {
-                    "deliveryDate": {
-                        "$gte": start_date,
-                        "$lte": end_date
-                    }
-                }
-            }] + pipeline
+    for order in orders_collection.find():
+        customer = customers_collection.find_one({'_id': order['custID']})
+        products_data = []
+
+        for product in order.get('products', []):
+            product_doc = products_collection.find_one({'_id': product['product_id']})
+            price_type = product.get('price_type', 'custom')
+            price_value = product['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+            )
+            products_data.append({
+                'product_name': product_doc['name'],
+                'price_name': price_type,
+                'price_value': price_value,
+                'quantity': product.get('quantity'),
+                'discount': product.get('discount', 0.0)
+            })
+
+        hampers_data = []
+
+        for hamper in order.get('hampers', []):
+            hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+            price_type = hamper.get('price_type', 'custom')
+            price_value = hamper['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+            )
+            hampers_data.append({
+                'hamper_name': hamper_doc['name'],
+                'price_name': price_type,
+                'price_value': price_value,
+                'quantity': hamper.get('quantity'),
+                'discount': hamper.get('discount', 0.0)
+            })
+
+        result.append({
+            '_id': order['_id'],
+            'customer_name': customer['name'],
+            'customer_address': customer['address'],
+            'deliveryDate': order['deliveryDate'],
+            'products': products_data,
+            'hampers': hampers_data,
+            'orderDiscount': order.get('orderDiscount', 0.0)
+        })
+
+    # calculating order total :/
+    for order in result:
+        order['order_total'] = calculate_order_total(order)
+    result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
     
-    # print(cust_pipeline)
-    orders_data = list(POData.aggregate(cust_pipeline))
-    print(len(orders_data))
-    print(len(list(POData.find())))
-    # pprint.PrettyPrinter(width=50).pprint(orders_data)    
-    for order in orders_data:
-        order_total = 0.0
-        if order['products'] == [{}]:
-            order['products'] = []
-        if order['hampers'] == [{}]:
-            order['hampers'] = []
-        for product in order['products']:
-            order_total += product['price'] * product['quantity']
-        for product in order['hampers']:
-            order_total += product['price'] * product['quantity']
-        order['order_total'] = order_total
-    return render_template('lookup.html',data = orders_data)
+    # for specific date handling
+    if request.method=='POST':
+        if request.form.get('specificDate'):
+            target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('startDate'):
+            target_dates = [request.form.get('startDate'),request.form.get('endDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        else:
+            filtered_orders = result_sorted
+    else:
+        filtered_orders = result_sorted
+    
+    pprint.PrettyPrinter(width=50).pprint(filtered_orders)
+    return render_template('lookup.html',data = filtered_orders)
 
 @app.route("/edit_po/<poID>",methods=["GET"])
 def edit_po(poID):

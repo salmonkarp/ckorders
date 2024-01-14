@@ -1,0 +1,46 @@
+<!-- modify.html -->
+
+{% extends 'base.html' %}
+
+{% block title %}Modify{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+        .center_form{
+            width: 30%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #f4f4f4;
+            padding: 10px 10px 10px 10px;
+        }
+        a.modify {
+            display: block;
+            text-align: center;
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: bold;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background-color: #04AA6D;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        a.modify:hover {
+            background-color: #ffffff;
+            color: #04AA6D;
+        }
+    </style>
+    <body>
+        <div class="center_form">
+                <!-- <a href="/add_product" class="modify">Add Product</a>
+                <a href="/add_hampers" class="modify">Add Hampers</a> -->
+                <a href="/edit_product" class="modify">View Products</a>
+                <a href="/edit_hamper" class="modify">View Hampers</a>
+                <a href="/view_customer" class="modify">View Customers</a>
+            </ul>
+        </div>
+    </body>
+</head>
+{% endblock %}

@@ -1,0 +1,181 @@
+{% extends 'base.html' %}
+
+{% block title %}View Hampers{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .center_form {
+            width: 60%;
+            margin: auto;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .main-hamper-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .hamper-detail-container {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #04AA6D;
+            color: #fff;
+        }
+
+        a.add {
+            color: #04AA6D;
+            text-decoration: none;
+            margin-right: 10px;
+        }
+
+        a.add:hover {
+            text-decoration: underline;
+        }
+
+        label {
+            margin-right: 20px;
+        }
+
+        .additional-options table {
+            margin-top: 10px;
+        }
+
+        a.back{
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        a.back:hover{
+            background-color: #04AA6D;
+        }
+        .hamperTablesContainer {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .hamperTable {
+            flex: 1;
+            margin-right: 20px; /* Adjust margin as needed */
+            margin-bottom: 20px;
+        }
+
+        /* Additional styles from the first code */
+        form {
+            width: 80%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #f4f4f4; /* Updated background color */
+            padding: 20px; /* Updated padding */
+            border-radius: 8px;
+        }
+
+        table, tr, td, th {
+            border: solid 1px black;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .order-container {
+            width: 60%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #f4f4f4; /* Updated background color */
+            padding: 20px; /* Updated padding */
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="center_form">
+        <!-- Table for hampers -->
+        <div class="additional-options" id="hampers-options">
+            <a href="/add_hampers"class="back">Add Hampers</a>
+            {% for hamper in hampersList %}
+                <div class="main-hamper-container">
+                    <div class="hamper-detail-container">
+                        <div style='font-weight:bold'>Name: {{ hamper.name }} </div>
+                        <a href="/edit_hampers/{{hamper['_id']}}">Edit</a> or
+                        <a href="/delete_hampers/{{hamper['_id']}}">Delete</a>
+                    </div>
+                    <div class="hamperTablesContainer">
+                        <table class="hamperTable">
+                            <thead>
+                                <tr>
+                                    <th>Products</th>
+                                    <th>Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in hamper['items'] %}
+                                    <tr>
+                                        <td>{{ item.name }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <table class="hamperTable">
+                            <thead>
+                                <tr>
+                                    <th>Price Name</th>
+                                    <th>Price Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for price in hamper['prices'] %}
+                                    <tr>
+                                        <td>{{ price['name'] }}</td>
+                                        <td>{{ price['value']|format_currency }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        <a href="/modify" class="back">Back</a>
+    </div>
+
+    <script>
+    </script>
+</body>
+{% endblock %}
