@@ -124,6 +124,20 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
+        a.back{
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        a.back:hover{
+            background-color: #04AA6D;
+        }
+
     </style>
 </head>
 <body>  
@@ -230,8 +244,11 @@
                 </tr>
             </tfoot>
         </table>
-        <a href="edit_po/{{po['_id']}}">Edit</a>
-        <a href="delete_po/{{po['_id']}}">Delete</a>
+        <div style="text-align: right;">
+            <span style="float: left;">&nbsp;</span> <!-- Spacer to push buttons to the right -->
+            <a href="edit_po/{{po['_id']}}" class="back">Edit</a>
+            <a href="delete_po/{{po['_id']}}" class="back">Delete</a>
+        </div>
     </div>
     {% endfor %}
 
