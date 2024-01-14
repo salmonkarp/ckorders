@@ -135,9 +135,28 @@
         }
 
         a.back:hover{
-            background-color: #04AA6D;
+            background-color: #038f5c;
+        }
+        
+        .pagination-controls {
+            margin-top: 20px;
+            text-align: center;
         }
 
+        .pagination-controls a {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 0 5px;
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .pagination-controls a:hover {
+            background-color: #038f5c;
+        }
     </style>
 </head>
 <body>  
@@ -242,15 +261,38 @@
                         {{ po['order_total'] | format_currency }} 
                     </td>
                 </tr>
+                {% if po['orderDiscount'] > 0 %}
+                <tr>
+                    <td colspan="3" style="text-align: right; padding-right:5px">Order Discount ({{po['orderDiscount']}}%): </td>
+                    <td>
+                        -{{ (po['orderDiscount'] * po['order_total'] * 0.01) | format_currency }} 
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align: right; padding-right:5px">Final Total:</td>
+                    <td>
+                        {{ (po['order_total'] - (po['orderDiscount'] * po['order_total'] * 0.01)) | format_currency }} 
+                    </td>
+                </tr>
+                {% endif %}
             </tfoot>
         </table>
         <div style="text-align: right;">
-            <span style="float: left;">&nbsp;</span> <!-- Spacer to push buttons to the right -->
+            <span style="float: left;">&nbsp;</span> 
             <a href="edit_po/{{po['_id']}}" class="back">Edit</a>
             <a href="delete_po/{{po['_id']}}" class="back">Delete</a>
         </div>
     </div>
     {% endfor %}
+    <div class="pagination-controls">
+        {% if page > 1 %}
+            <a href="{{ url_for('lookup', page=page-1) }}">Previous</a>
+        {% endif %}
+    
+        {% if data | length == 3 %}
+            <a href="{{ url_for('lookup', page=page+1) }}">Next</a>
+        {% endif %}
+    </div>
 
 </body>
 <script>
@@ -269,5 +311,6 @@
             dateRangeDiv.style.display = 'none';
         }
     });
+    
 </script>
 {% endblock %}

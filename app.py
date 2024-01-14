@@ -1,18 +1,10 @@
-from flask import Flask
-from flask import render_template
-from flask import request
-from flask import redirect
+from flask import Flask, render_template, request, redirect
 from dotenv import load_dotenv
 from flask_cors import CORS
 from bson.objectid import ObjectId
 from datetime import datetime
-import pprint
-import locale
-import os
-import pymongo
-import sqlite3
+import pprint, locale, os, pymongo, sqlite3
 from babel.numbers import format_currency as fcrr
-
 
 # Load environment variables from .env file
 load_dotenv()
@@ -34,18 +26,13 @@ def calculate_order_total(po):
         quantity = product['quantity']
         discount_value = product['discount'] * product['price_value'] / 100.0
         item_subtotal = (price_value - discount_value) * quantity
-        print(item_subtotal)
         order_total += item_subtotal
     return order_total
-        
-        
 
-# object creation
+# objects creation
 app = Flask(__name__)
-os.environ["MONGOKEY"] = "l6ws7zM0vFplKeTc"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
-print(MCString)
 MClient = pymongo.MongoClient(MCString)['CK']
 app.jinja_env.filters['format_currency'] = format_currency
 CORS(app)  # Enable CORS for all routes and origins
@@ -53,16 +40,17 @@ CORS(app)  # Enable CORS for all routes and origins
 # Configure FLASK_DEBUG from environment variable
 app.config['DEBUG'] = os.environ.get('FLASK_DEBUG')
 
-
-# menu
+# home
 @app.route("/",methods=["GET"])
 def root():
     return render_template('menu.html')
 
+# add product get
 @app.route("/add_product",methods=["GET"])
 def add_product():
     return render_template("add_product.html")
 
+# modify details
 @app.route("/modify",methods=["GET"])
 def modify():
     return render_template("modify.html")
@@ -349,7 +337,7 @@ def createPOSubmit():
     }
 
     if orderDiscount > 0:
-        OrderObject['orderDiscount']:orderDiscount
+        OrderObject['orderDiscount']=orderDiscount
     
     #adding products
     for product_id in selected_products:
@@ -409,6 +397,10 @@ def createPOSubmit():
 
 @app.route("/viewPOs",methods=["GET","POST"])
 def lookup():
+    page = int(request.args.get('page', 1))
+    start_index = (page - 1) * 3
+    end_index = start_index + 3
+    
     orders_collection = MClient['POs']
     products_collection = MClient['Products']  # Assuming this is the correct name for the Products collection
     hampers_collection = MClient['Hampers']
@@ -479,7 +471,7 @@ def lookup():
         filtered_orders = result_sorted
     
     pprint.PrettyPrinter(width=50).pprint(filtered_orders)
-    return render_template('lookup.html',data = filtered_orders)
+    return render_template('lookup.html',data = filtered_orders[start_index:end_index], page=page)
 
 @app.route("/edit_po/<poID>",methods=["GET"])
 def edit_po(poID):
@@ -487,6 +479,7 @@ def edit_po(poID):
     products_data = list(MClient['Products'].find())
     hampers_data = list(MClient['Hampers'].find())
     customer_data = dict(MClient['Customers'].find_one({'_id':order_data['custID']}))
+    customersList = list(MClient['Customers'].find())
     
     # Convert the list of products in order_data to a dictionary for easier lookup
     products_in_order = {str(product['product_id']): product for product in order_data.get('products', [])}
@@ -496,41 +489,67 @@ def edit_po(poID):
     for product in products_data:
         product_id_str = str(product['_id'])
         product_in_order = products_in_order.get(product_id_str, {})
+        
         product['quantity_in_order'] = product_in_order.get('quantity', 0)
-        product['custom_price_in_order'] = product_in_order.get('custom_price', product['price'])
         product['in_order'] = bool(product_in_order)  # Add in_order flag
-        product['has_custom_price'] = 'custom_price' in product_in_order
+        if product_in_order:
+            product['price_type'] = product_in_order['price_type']
+            if product_in_order['price_type'] == 'custom':
+                product['has_custom_price'] = True
+                product['custom_price_in_order'] = product_in_order.get('custom_price')
+            else:
+                product['has_custom_price'] = False
+                price_type = product_in_order.get('price_type')
+                product['custom_price_in_order'] = next((price['value'] for price in product['prices'] if price_type == price['name']), None)
+                print(product['custom_price_in_order'])
 
     for hamper in hampers_data:
         hamper_id_str = str(hamper['_id'])
         hamper_in_order = hampers_in_order.get(hamper_id_str, {})
+        
         hamper['quantity_in_order'] = hamper_in_order.get('quantity', 0)
-        hamper['custom_price_in_order'] = hamper_in_order.get('custom_price', hamper['price'])
         hamper['in_order'] = bool(hamper_in_order)  # Add in_order flag
-        hamper['has_custom_price'] = 'custom_price' in hamper_in_order
-    
-    # print(products_data)
-    # print('haha',hampers_data)
-    # pprint.PrettyPrinter(width=50).pprint(hampers_data)   
-    return render_template("edit_po.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_data = customer_data)
+        if hamper_in_order:
+            hamper['price_type'] = hamper_in_order['price_type']
+            if hamper_in_order['price_type'] == 'custom':
+                hamper['has_custom_price'] = True
+                hamper['custom_price_in_order'] = hamper_in_order.get('custom_price')
+            else:
+                hamper['has_custom_price'] = False
+                price_type = hamper_in_order.get('price_type')
+                hamper['custom_price_in_order'] = next((price['value'] for price in hamper['prices'] if price_type == price['name']), None)
+                print(hamper['custom_price_in_order'])
+
+    return render_template("edit_po.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_data = customer_data, customersList = customersList)
 
 @app.route("/edit_po_submit",methods=["POST"])
 def edit_po_submit():
+    orderID = request.form.get('orderID')
+    
     #handling customer
     custID = request.form.get('custID')
-    customer_name = request.form.get('customer_name')
-    customer_address = request.form.get('customer_address')
-    print("stop",customer_name,customer_address)
-    MClient['Customers'].update_one({'_id':ObjectId(custID)},{
-        '$set':{
-            'name':customer_name,
-            'address':customer_address
-        }
-    })
+    existing_customer_id = request.form.get('existing_customer_id')
+    if existing_customer_id != "":
+        custID = existing_customer_id
+        MClient['POs'].update_one({'_id':ObjectId(orderID)},{
+            '$set':{
+                'custID':ObjectId(custID)
+            }
+        })
+    else:
+        customer_name = request.form.get('customer_name')
+        customer_address = request.form.get('customer_address')
+        print("stop",customer_name,customer_address)
+        MClient['Customers'].update_one({'_id':ObjectId(custID)},{
+            '$set':{
+                'name':customer_name,
+                'address':customer_address
+            }
+        })
     
-    #handling delivery date
-    orderID = request.form.get('orderID')
+    #handling delivery date and order discount
     deliveryDate = request.form.get('deliveryDate')
+    orderDiscount = float(request.form.get('order-discount'))
     
     #taking products and hampers list
     selected_products = request.form.getlist('products[]')
@@ -543,49 +562,67 @@ def edit_po_submit():
         'products': [],
         'hampers':[]
     }
-
+    
     #adding products
     for product_id in selected_products:
         quantity_key = 'p_quantities_' + product_id
         quantity = int(request.form.get(quantity_key, 0))
-        cutstom_price_key = product_id + "_custom_price"
-        custom_price = request.form.get(cutstom_price_key, 0)
-        if quantity > 0 and custom_price:
-            OrderObject['products'].append({
+        discount_key = product_id + '_product_discount'
+        discount = float(request.form.get(discount_key, 0))
+        price_type = request.form.get(product_id + '_price_type', '')
+        
+        if quantity > 0:
+            product_object = {
                 'product_id': ObjectId(product_id),
                 'quantity': quantity,
-                'custom_price':float(custom_price)
-            })
-        elif quantity > 0:
-            OrderObject['products'].append({
-                'product_id': ObjectId(product_id),
-                'quantity': quantity,
-            })
+                'price_type': price_type
+            }
+        
+        if price_type=='custom':
+            custom_price_key = product_id + "_custom_price"
+            custom_price = float(request.form.get(custom_price_key, 0))
+            product_object['custom_price'] = custom_price
+        
+        if discount > 0:
+            product_object['discount'] = discount
+        
+        OrderObject['products'].append(product_object)
 
     #adding hampers
     for product_id in selected_hampers:
         quantity_key = 'h_quantities_' + product_id
         quantity = int(request.form.get(quantity_key, 0))
-        cutstom_price_key = product_id + "_custom_price"
-        custom_price = request.form.get(cutstom_price_key, 0)
+        discount_key = product_id + '_hamper_discount'
+        discount = float(request.form.get(discount_key, 0))
+        price_type = request.form.get(product_id + '_price_type', '')
         
-        if quantity > 0 and custom_price:
-            OrderObject['hampers'].append({
-                'product_id': ObjectId(product_id),
-                'quantity': quantity,
-                'custom_price':float(custom_price)
-            })
-        elif quantity > 0:
-            OrderObject['hampers'].append({
-                'product_id': ObjectId(product_id),
-                'quantity': quantity,
-            })
+        if quantity > 0:
+            hamper_entry = {
+            'product_id': ObjectId(product_id),
+            'quantity': quantity,
+            'price_type': price_type
+        }
+            
+        if price_type == 'custom':
+            custom_price_key = product_id + "_custom_price"
+            custom_price = float(request.form.get(custom_price_key, 0))
+            hamper_entry['custom_price'] = custom_price
 
+        if discount > 0:
+            hamper_entry['discount'] = discount
+        
+        OrderObject['hampers'].append(hamper_entry)
+        
+    #handling orderDiscount
+    if orderDiscount >= 0:
+        OrderObject['orderDiscount'] = orderDiscount
+    
+    ##end of copy
     ckPOs = MClient['POs']
     pprint.PrettyPrinter(width=50).pprint(OrderObject)   
     ckPOs.update_one({'_id':ObjectId(orderID)},{'$set':OrderObject})
 
-    # print(OrderObject)
+    print(OrderObject)
     return redirect('/viewPOs')
 
 @app.route("/delete_po/<poID>",methods=["GET"])

@@ -28,6 +28,9 @@
         .hiddenDivHamper{
             padding-left: 50px;
         }
+        table{
+            width:100%;
+        }
     </style>
 </head>
 <body>
@@ -35,22 +38,62 @@
         <div class="center_form">
             <p>Edit PO</p>
 
-            <!-- Existing Customer Data -->
             <p>
                 Order ID: {{ order_data['_id'] }} <br>
             </p>
             <input type="hidden" name="orderID" value="{{ order_data._id }}">
+            
+            <!-- Choose from either product or hampers -->
+            <label>
+                <input type="radio" name="customer-type" value="new" onclick="showOptions('current')" checked> Modify Current Customer
+            </label>
+            <label>
+                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')" > Move to Existing Customer
+            </label>
 
-            <!-- Customer Stuff -->
-            <input type="hidden" name="custID" value="{{ customer_data._id }}">
-            <label>Customer Name</label>
-            <input type="text" name="customer_name" value="{{ customer_data.name }}"> <br>
-            <label>Customer Address</label>
-            <input type="text" name="customer_address" value="{{ customer_data.address }}"> <br>
+            <!-- Modify Current Customer -->
+            <div class="additional-options" id="current-options" style="display:block">
+                <input type="hidden" name="custID" value="{{ customer_data._id }}">
+                <table>
+                    <tr>
+                        <td>Customer Name</td>
+                        <td><input type="text" name="customer_name" value="{{ customer_data.name }}"> <br></td>
+                    </tr>
+                    <tr>
+                        <td>Customer Address</td>
+                        <td><input type="text" name="customer_address" value="{{ customer_data.address }}"> <br></td>
+                    </tr>
+                </table>
+            </div>
             
-            <label>Delivery Date</label>
-            <input type="date" name="deliveryDate" value="{{ order_data.deliveryDate }}">
+            <!-- Existing Customer Option -->
+            <div class="additional-options" id="existing-options">
+                <table>
+                    <tr>
+                        <td>Select existing customer:</td>
+                        <td><select name="existing_customer_id">
+                            <option value="">-- Select existing customer --</option>
+                            {% for customer in customersList %}
+                                <option value="{{ customer._id }}">{{ customer.name }}</option>
+                            {% endfor %}
+                        </select></td>
+                    </tr>
+                </table>
+            </div>
             
+            <div style="margin-top:10px">
+            <table>
+                <tr>
+                    <td>Delivery Date</td>
+                    <td><input type="date" name="deliveryDate" value="{{ order_data.deliveryDate }}"></td>
+                </tr>
+                <tr>
+                    <td>Order Discount</td>
+                    <td><input type="number" value="{{order_data['orderDiscount']}}" name="order-discount"></td>
+                </tr>
+            </table>
+            </div>
+
             <!-- Input of products -->
             <p>Select products:</p>
             <ul id="product-list" style="list-style-type: none; padding: 0;">
@@ -58,25 +101,41 @@
                     <li class="product-option">
                         <input type="checkbox" name="products[]" value="{{ product._id }}" class="checkboxClass" {% if product.in_order %} checked {% endif %} onchange="toggleDiv(this, 'hiddenDivProduct')">
                         <label for="product_{{ product._id }}">{{ product.name }}</label>
-                        <br>
-                        
-                        <div class="hiddenDivProduct" style="display: {% if product.in_order %}block{% else %}none{% endif %}">
-                            <label>Quantity: </label>
-                            <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" value="{{ product.quantity_in_order }}">
-                            <br>
-                            <input type="radio" id="{{ product._id }}_normal_price" name="{{ product._id }}_price_type" value="normal" {% if not product.has_custom_price %} checked {% endif %}>
-                            <label for="{{ product._id }}_normal_price">Normal Price: Rp{{ product.price }}</label>
-                            <br>
-
-                            <input type="radio" id="{{ product._id }}_custom_price" name="{{ product._id }}_price_type" value="custom" {% if product.has_custom_price %} checked {% endif %}>
-                            <label for="{{ product._id }}_custom_price">Custom Price:</label>
-                            <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" value="{{ product.custom_price_in_order }}"><br>
+                        <div class="hiddenDiv" style="display: none;">
+                            <table>
+                                <tr>
+                                    <td>Quantity</td>
+                                    <td><input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;" value="{{product['quantity_in_order']}}"></td>
+                                </tr>
+                                <tr>
+                                    <td>Choose Price</td>
+                                    <td>
+                                        <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="font-size: 14px;" value="product['price_type']">
+                                            {% for price in product.prices %}
+                                                {% if price.name == product['price_type'] %}
+                                                <option value="{{ price.name }}" selected>{{ price.name }}: {{ price.value | format_currency }}</option>
+                                                {% else %}
+                                                <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
+                                                {% endif %}
+                                            {% endfor %}
+                                            {% if product['price_type'] == 'custom' %}
+                                            <option value="custom" selected>Custom Price</option>
+                                            {% else %}
+                                            <option value="custom">Custom Price</option>
+                                            {% endif %}
+                                        </select>
+                                        <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;" value="{{product.custom_price_in_order}}">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Product Discount (in %)</td>
+                                    <td>
+                                        <input type="number" name="{{ product._id }}_product_discount" value="0" min="0">
+                                    </td>
+                                </tr>
+                            </table>
                         </div>
                     </li>
-                    <script>
-                        selectRadio('{{ product._id }}_normal_price', '{{ 'normal' if not product.has_custom_price else 'custom' }}');
-                        selectRadio('{{ product._id }}_custom_price', '{{ 'custom' if product.has_custom_price else 'normal' }}');
-                    </script>
                 {% endfor %}
             </ul>
 
@@ -87,25 +146,39 @@
                     <li class="product-option">
                         <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" class="checkboxClass" {% if hamper.in_order %} checked {% endif %} onchange="toggleDiv(this, 'hiddenDivHamper')">
                         <label for="hamper_{{ hamper._id }}">{{ hamper.name }}</label>
-                        <br>
-                        
-                        <div class="hiddenDivHamper" style="display: {% if hamper.in_order %}block{% else %}none{% endif %}">
-                            <label>Quantity: </label>
-                            <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" value="{{ hamper.quantity_in_order }}">
-                            <br>
-                            <input type="radio" id="{{ hamper._id }}_normal_price" name="{{ hamper._id }}_price_type" value="normal" {% if not hamper.has_custom_price %} checked {% endif %}>
-                            <label for="{{ hamper._id }}_normal_price">Normal Price: Rp{{ hamper.price }}</label>
-                            <br>
-
-                            <input type="radio" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_price_type" value="custom" {% if hamper.has_custom_price %} checked {% endif %}>
-                            <label for="{{ hamper._id }}_custom_price">Custom Price:</label>
-                            <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price" value="{{ hamper.custom_price_in_order }}"><br>
+                        <div class="hiddenDiv" style="display: none;">
+                            <table>
+                                <tr>
+                                    <td>Quantity</td>
+                                    <td><input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" style="display: none;" value="{{hamper['quantity_in_order']}}"></td>
+                                </tr>
+                                <tr>
+                                    <td>Choose Price:</td>
+                                    <td>
+                                        <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="font-size: 14px;">
+                                        {% for price in hamper.prices %}
+                                            {% if price.name == hamper['price_type'] %}
+                                            <option value="{{ price.name }}" selected>{{ price.name }}: {{ price.value | format_currency }}</option>
+                                            {% else %}
+                                            <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% if hamper['price_type'] == 'custom' %}
+                                        <option value="custom" selected>Custom Price</option>
+                                        {% else %}
+                                        <option value="custom">Custom Price</option>
+                                        {% endif %}
+                                        </select>
+                                        <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;" value="{{hamper.custom_price_in_order}}">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Hamper Discount (in %)</td>
+                                    <td><input type="number" name="{{ hamper._id }}_hamper_discount" value="0" min="0"></td>
+                                </tr>
+                            </table>
                         </div>
                     </li>
-                    <script>
-                        selectRadio('{{ hamper._id }}_normal_price', '{{ 'normal' if not hamper.has_custom_price else 'custom' }}');
-                        selectRadio('{{ hamper._id }}_custom_price', '{{ 'custom' if hamper.has_custom_price else 'normal' }}');
-                    </script>
                 {% endfor %}
             </ul>
 
@@ -114,16 +187,58 @@
     </form>
 </body>
 <script>
-    function toggleDiv(checkbox, divClass) {
-    var hiddenDiv = checkbox.parentNode.querySelector('.' + divClass);
-    hiddenDiv.style.display = checkbox.checked ? 'block' : 'none';
-}
-    function selectRadio(elementId, value) {
-    var radioElement = document.getElementById(elementId);
-    if (radioElement) {
-        radioElement.checked = value;
+    document.addEventListener('DOMContentLoaded', function() {
+        var checkboxes = document.querySelectorAll('.checkboxClass');
+        checkboxes.forEach(function(checkbox) {
+            toggleDiv(checkbox);
+        });
+    });
+    function showOptions(customerType) {
+        // Hide all additional options initially
+        document.querySelectorAll('.additional-options').forEach(function(option) {
+            option.style.display = 'none';
+        });
+
+        // Show options based on the selected gender
+        document.getElementById(customerType + '-options').style.display = 'block';
     }
-}
+
+    function toggleDiv(checkbox, divClass) {
+        var hiddenDiv = checkbox.parentNode.querySelector('.' + divClass);
+        hiddenDiv.style.display = checkbox.checked ? 'block' : 'none';
+    }
+    function selectRadio(elementId, value) {
+        var radioElement = document.getElementById(elementId);
+        if (radioElement) {
+            radioElement.checked = value;
+        }
+    }
+
+    // to show Quantity inputs and toggle custom price input based on checkboxes
+    function toggleDiv(checkbox) {
+        var div = checkbox.parentElement.querySelector('.hiddenDiv');
+        var quantityInput = div.querySelector('input[name^="p_quantities"], input[name^="h_quantities"]');
+        var customPriceInput = div.querySelector('input[type="number"][name$="_custom_price"]');
+        
+        if (checkbox.checked) {
+            div.style.display = 'block';
+            quantityInput.style.display = 'block';
+            toggleCustomPriceInput(div.querySelector('select'), customPriceInput);
+        } else {
+            div.style.display = 'none';
+            quantityInput.style.display = 'none';
+            customPriceInput.style.display = 'none';
+        }
+    }
+
+    // to toggle custom price input based on selected option
+    function toggleCustomPriceInput(select, customPriceInput) {
+        if (select.value === 'custom') {
+            customPriceInput.style.display = 'block';
+        } else {
+            customPriceInput.style.display = 'none';
+        }
+    }
 
 </script>
 {% endblock %}
