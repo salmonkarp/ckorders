@@ -11,6 +11,8 @@ import locale
 import os
 import pymongo
 import sqlite3
+from babel.numbers import format_currency as fcrr
+
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,9 +22,9 @@ def open_DB(db):
     connection=sqlite3.connect(db)
     connection.row_factory = sqlite3.Row
     return connection
-def format_currency(amount):
-    locale.setlocale(locale.LC_ALL, 'id_ID')  # Set the locale to Indonesian
-    return locale.currency(amount, grouping=True)
+def format_currency(amount, currency='IDR'):  # Default currency is Indonesian Rupiah (IDR)
+    formatted_amount = fcrr(amount, currency, locale='id_ID.UTF-8')
+    return formatted_amount
 def filter_orders_by_dates(orders, target_dates):
     return [order for order in orders if order['deliveryDate'] in target_dates]
 def calculate_order_total(po):
@@ -40,6 +42,7 @@ def calculate_order_total(po):
 
 # object creation
 app = Flask(__name__)
+os.environ["MONGOKEY"] = "l6ws7zM0vFplKeTc"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 print(MCString)
