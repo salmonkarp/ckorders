@@ -1,91 +1,85 @@
-<html>
-    <head>
-        <title>View POs</title>
-        <style>
-            form {
-                width: 40%;
-                margin: auto;
-                margin-top: 20px;
-                background-color: #cccaca;
-                padding: 10px 10px 10px 10px;
-            }
+<!-- customer_summary.html -->
 
-            table,tr,td,th{
-                border: solid 1px black;
-                border-collapse: collapse;
-                text-align: center;
-            }
+{% extends 'base.html' %}
 
-            table {
-                width: 100%;
-            }
-            ul {
-                list-style-type: none;
-                margin: 0;
-                padding: 0;
-                overflow: hidden;
-                background-color: #333;
-            }
+{% block title %}Summary (Customer){% endblock %}
 
-            li {
-                float: left;
-            }
+{% block content %}
+<head>
+    <style>
+        table,tr,td,th{
+            border: solid 1px black;
+            border-collapse: collapse;
+            text-align: center;
+        }
 
-            li a {
-                display: block;
-                color: white;
-                text-align: center;
-                padding: 14px 16px;
-                text-decoration: none;
-            }
+        table {
+            width: 100%;
+        }
+        .active {
+            background-color: #04AA6D;
+        }
+        .additional-options{
+            display:none;
+        }
+        .order-container{
+            width: 50%;
+            margin: auto;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
 
-            li a:hover {
-                background-color: #111;
-            }
-            .active {
-                background-color: #04AA6D;
-            }
-            .additional-options{
-                display:none;
-            }
-            .order-container{
-                width: 40%;
-                margin: auto;
-                margin-top: 20px;
-                background-color: #cccaca;
-                padding: 10px 10px 10px 10px;
-            }
-        </style>
-    </head>
-    <body>
-        <!-- Header -->
-        <ul> 
-            <li><a href="/createPO">Create PO</a></li>
-            <li><a href="/viewPOs">View POs</a></li>
-            <li><a href="/add">Add Products</a></li>
-            <li><a href="/edit">Edit Products</a></li>
-            <li  class="active"><a href="/summary">Summaries</a></li>
-        </ul>
-        
-        <!-- Date selection -->
-        <form action="/summary" method="POST">
-            <label for="viewType">Select summary:</label>
-            <select id="viewType" name="viewType" required>
-                <option value="" disabled selected>Select an option</option>
-                <option value="productSort">Product Summary</option>
-                <option value="customerSort">Customer Summary</option>
-            </select>
-    
-            <div>
-                <label for="startDateInput">Start Date:</label>
-                <input type="date" id="startDateInput" name="startDate" required> <br>
-                <label for="endDateInput">End Date:</label>
-                <input type="date" id="endDateInput" name="endDate" required> <br>
-            </div>
-    
-            <button type="submit">View Orders</button>
-        </form>
-    </body>
-    <script>
-    </script>
-</html>
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        a.back{
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        a.back:hover{
+            background-color: #04AA6D;
+        }
+    </style>
+</head>
+<body>
+    <div class="order-container">
+        <h3>Customer Summary</h3>
+        <p>
+            Start Date: {{startDate}} <br>
+            End Date: {{endDate}} <br>
+            Order Count: {{order_count}} <br>
+        </p>
+        <table>
+            <tr>
+                <th>Customer Name</th>
+                <th>Quantity Spent</th>
+            </tr>
+            {% for item in data %}
+            <tr>
+                <td>{{ item[1][0]}} </td>
+                <td>{{ item[1][1] | format_currency}} </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <a href="/summary" class="back">Back</a>
+    </div>
+</body>
+<script>
+</script>
+{% endblock %}

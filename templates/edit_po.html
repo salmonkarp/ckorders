@@ -8,35 +8,75 @@
 <head>
     <title>Edit PO</title>
     <style>
-        .center_form{
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .center_form {
             width: 30%;
             margin: auto;
             margin-top: 20px;
-            background-color: #cccaca;
-            padding: 10px 10px 10px 10px;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        .product-option{
-            float:none;
-            background-color: #ababab;
+
+        .product-option {
+            float: none;
+            background-color: #e0e0e0;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
         }
-        .additional-options{
+
+        .additional-options {
+            display: none;
+            margin-top: 2.5%;
+        }
+
+        .hiddenDiv {
             display: none;
         }
-        .hiddenDivProduct{
-            padding-left: 50px;
+
+        input[type="submit"] {
+            background-color: #04AA6D;
+            color: #ffffff;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
         }
-        .hiddenDivHamper{
-            padding-left: 50px;
+
+        input[type="submit"]:hover {
+            background-color: #047456;
         }
+
+        ul#product-list, ul#hampers-list{
+            background-color: white;
+        }
+
         table{
             width:100%;
         }
+
+        #current-options, #existing-options, #additional-details{
+            background-color: #e0e0e0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
     </style>
 </head>
 <body>
     <form action="/edit_po_submit" enctype="multipart/form-data" method="post">
         <div class="center_form">
-            <p>Edit PO</p>
+            <h2>Edit PO</h2>
 
             <p>
                 Order ID: {{ order_data['_id'] }} <br>
@@ -56,7 +96,7 @@
                 <input type="hidden" name="custID" value="{{ customer_data._id }}">
                 <table>
                     <tr>
-                        <td>Customer Name</td>
+                        <td style="width:50%">Customer Name</td>
                         <td><input type="text" name="customer_name" value="{{ customer_data.name }}"> <br></td>
                     </tr>
                     <tr>
@@ -70,25 +110,27 @@
             <div class="additional-options" id="existing-options">
                 <table>
                     <tr>
-                        <td>Select existing customer:</td>
-                        <td><select name="existing_customer_id">
-                            <option value="">-- Select existing customer --</option>
-                            {% for customer in customersList %}
-                                <option value="{{ customer._id }}">{{ customer.name }}</option>
-                            {% endfor %}
-                        </select></td>
+                        <td style="width:50%">Select existing customer:</td>
+                        <td>
+                            <select name="existing_customer_id" value="product['price_type']" style="width:82%">
+                                <option value="">Select existing customer</option>
+                                {% for customer in customersList %}
+                                    <option value="{{ customer._id }}">{{ customer.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
                     </tr>
                 </table>
             </div>
             
-            <div style="margin-top:10px">
+            <div style="margin-top:10px" id="additional-details">
             <table>
                 <tr>
-                    <td>Delivery Date</td>
-                    <td><input type="date" name="deliveryDate" value="{{ order_data.deliveryDate }}"></td>
+                    <td style="width:50%">Delivery Date</td>
+                    <td><input type="date" name="deliveryDate" value="{{ order_data.deliveryDate }}" style="width:80%"></td>
                 </tr>
                 <tr>
-                    <td>Order Discount</td>
+                    <td>Order Discount (in %)</td>
                     <td><input type="number" value="{{order_data['orderDiscount']}}" name="order-discount"></td>
                 </tr>
             </table>
@@ -110,7 +152,7 @@
                                 <tr>
                                     <td>Choose Price</td>
                                     <td>
-                                        <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="font-size: 14px;" value="product['price_type']">
+                                        <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="font-size: 14px; width:82%" value="product['price_type']">
                                             {% for price in product.prices %}
                                                 {% if price.name == product['price_type'] %}
                                                 <option value="{{ price.name }}" selected>{{ price.name }}: {{ price.value | format_currency }}</option>
@@ -153,9 +195,9 @@
                                     <td><input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" style="display: none;" value="{{hamper['quantity_in_order']}}"></td>
                                 </tr>
                                 <tr>
-                                    <td>Choose Price:</td>
+                                    <td>Choose Price</td>
                                     <td>
-                                        <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="font-size: 14px;">
+                                        <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="font-size: 14px; width:82%" value="hamper['price_type']">
                                         {% for price in hamper.prices %}
                                             {% if price.name == hamper['price_type'] %}
                                             <option value="{{ price.name }}" selected>{{ price.name }}: {{ price.value | format_currency }}</option>

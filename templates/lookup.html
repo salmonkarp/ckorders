@@ -105,7 +105,7 @@
         }
 
         table, tr, td, th {
-            border: solid 1px black;
+            border: solid 1px #ddd;
             border-collapse: collapse;
             text-align: center;
         }
@@ -188,7 +188,7 @@
     <!-- Order Display -->
     {% for po in data %}
     <div class="order-container">
-        <p>Order ID: {{po['_id']}} <br>
+        <p>
         Customer Name: {{po['customer_name']}} <br>
         Customer Address: {{po['customer_address']}} <br>
         Delivery Date: {{po['deliveryDate']}}</p>
@@ -206,7 +206,7 @@
                 <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_name']}})
+                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}} (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -233,7 +233,7 @@
                 <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_name']}})
+                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}}  (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -282,6 +282,7 @@
             <a href="edit_po/{{po['_id']}}" class="back">Edit</a>
             <a href="delete_po/{{po['_id']}}" class="back">Delete</a>
         </div>
+        <p>Order ID: {{po['_id']}}</p>
     </div>
     {% endfor %}
     <div class="pagination-controls">

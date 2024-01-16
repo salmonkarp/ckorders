@@ -2,28 +2,78 @@
 
 {% extends 'base.html' %}
 
-{% block title %}Add Hampers - CK PO App{% endblock %}
+{% block title %}Add Hampers{% endblock %}
 
 {% block content %}
 <head>
     <!-- Include Select2 from CDN -->
     <title>Add Product</title>
     <style>
+        body {
+                font-family: 'Arial', sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+            }
+
+        .center_form {
+            width: 50%;
+            margin: auto;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
         table {
             width: 100%;
         }
 
-        .center_form{
-            width: 40%;
-            margin: auto;
-            margin-top: 20px;
-            background-color: #cccaca;
-            padding: 10px 10px 10px 10px;
+        .product-option {
+            float: none;
+            background-color: #ababab;
         }
 
-        .product-option{
-            float:none;
-            background-color: #ababab;
+        input[type="text"],
+        input[type="number"] {
+            width: 80%;
+            padding: 8px;
+            margin: 5px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"],
+        button {
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover,
+        button:hover {
+            background-color: #038f5c;
+        }
+
+        #product-list {
+            border-collapse: collapse;
+            width: 80%;
+        }
+
+        .product-option td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        .quantity-input {
+            display: none;
+            width: 50px;
+            padding: 5px;
         }
     </style>
 </head>

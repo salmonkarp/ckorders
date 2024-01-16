@@ -19,6 +19,7 @@
             background-color: #ffffff;
             padding: 20px;
             border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         .product-option {
@@ -36,7 +37,6 @@
 
         .hiddenDiv {
             display: none;
-            padding-left: 50px;
         }
 
         input[type="submit"] {
@@ -105,19 +105,38 @@
                         <input type="checkbox" name="products[]" value="{{ product._id }}" class="checkboxClass" onchange="toggleDiv(this)">
                         <label for="product_{{ product._id }}">{{ product.name }}</label>
                         <div class="hiddenDiv" style="display: none;">
-                            <label>Quantity: </label>
-                            <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;" min="1">
-
-                            <label>Choose Price:</label> <br>
-                            <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="width:45%; font-size: 14px;">
-                                {% for price in product.prices %}
-                                    <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
-                                {% endfor %}
-                                <option value="custom">Custom Price</option>
-                            </select>
-                            <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;"><br>
-                            <label>Product Discount (in %)</label>
-                            <input type="number" name="{{ product._id }}_product_discount" value="0" min="0">
+                            <table>
+                                <tr>
+                                    <td  style="width:50%">
+                                        <label>Quantity </label>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;" min="1">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label>Choose Price</label>
+                                    </td>
+                                    <td>
+                                        <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="width:100%; font-size: 14px;">
+                                            {% for price in product.prices %}
+                                                <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
+                                            {% endfor %}
+                                            <option value="custom">Custom Price</option>
+                                        </select>
+                                        <input type="number" id="{{ product._id }}_custom_price" name="{{ product._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label>Product Discount (in %)</label>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="{{ product._id }}_product_discount" value="0" min="0">
+                                    </td>
+                                </tr>
+                            </table>
                         </div>
                     </li>
                 {% endfor %}
@@ -131,19 +150,38 @@
                         <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" class="checkboxClass" onchange="toggleDiv(this)">
                         <label for="hamper_{{ hamper._id }}">{{ hamper.name }}</label>
                         <div class="hiddenDiv" style="display: none;">
-                            <label>Quantity: </label>
-                            <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" style="display: none;">
-
-                            <label>Choose Price:</label> <br>
-                            <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="width:45%">
-                                {% for price in hamper.prices %}
-                                    <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
-                                {% endfor %}
-                                <option value="custom">Custom Price</option>
-                            </select>
-                            <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;"><br>
-                            <label>Hamper Discount (in %)</label>
-                            <input type="number" name="{{ hamper._id }}_hamper_discount" value="0" min="0">
+                            <table>
+                                <tr>
+                                    <td>
+                                        <label>Quantity </label>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" style="display: none;">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label>Choose Price</label> <br>
+                                    </td>
+                                    <td>
+                                        <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="width:100%; font-size: 14px;">
+                                            {% for price in hamper.prices %}
+                                                <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
+                                            {% endfor %}
+                                            <option value="custom">Custom Price</option>
+                                        </select>
+                                        <input type="number" id="{{ hamper._id }}_custom_price" name="{{ hamper._id }}_custom_price" placeholder="Enter custom price" style="display: none; margin-top: 2%;">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <label>Hamper Discount (in %)</label>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="{{ hamper._id }}_hamper_discount" value="0" min="0">
+                                    </td>
+                                </tr>
+                            </table>
                         </div>
                     </li>
                 {% endfor %}

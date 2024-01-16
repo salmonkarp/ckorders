@@ -9,14 +9,15 @@
             width: 40%;
             margin: auto;
             margin-top: 20px;
-            background-color: #cccaca;
-            padding: 10px 10px 10px 10px;
+            background-color: #ffffff; /* Updated background color */
+            padding: 20px; /* Updated padding */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
         table,tr,td,th{
-            border: solid 1px black;
-            border-collapse: collapse;
-            text-align: center;
+            border: none;
+            text-align: left;
         }
 
         table {
@@ -32,26 +33,54 @@
             background-color: #cccaca;
             padding: 10px 10px 10px 10px;
         }
+        input[type="submit"],
+        button {
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover,
+        button:hover {
+            background-color: #038f5c;
+        }
     </style>
 </head>
 <body> 
     <!-- Date selection -->
     <form action="/summary" method="POST">
-        <label for="viewType">Select summary:</label>
-        <select id="viewType" name="viewType" required>
-            <option value="" disabled selected>Select an option</option>
-            <option value="productSort">Product Summary</option>
-            <option value="customerSort">Customer Summary</option>
-        </select>
-
-        <div>
-            <label for="startDateInput">Start Date:</label>
-            <input type="date" id="startDateInput" name="startDate" required> <br>
-            <label for="endDateInput">End Date:</label>
-            <input type="date" id="endDateInput" name="endDate" required> <br>
-        </div>
-
-        <button type="submit">View Orders</button>
+        <table>
+            <tr>
+                <td><label for="viewType">Select summary:</label></td>
+                <td>
+                    <select id="viewType" name="viewType" required>
+                        <option value="" disabled selected>Select an option</option>
+                        <option value="productSort">Product Summary</option>
+                        <option value="customerSort">Customer Summary</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="startDateInput">Start Date:</label>
+                </td>
+                <td>
+                    <input type="date" id="startDateInput" name="startDate" required>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="endDateInput">End Date:</label>
+                </td>
+                <td>
+                    <input type="date" id="endDateInput" name="endDate" required>
+                </td>
+            </tr>
+        </table>
+        <button type="submit">View Summary</button>
     </form>
 </body>
 <script>

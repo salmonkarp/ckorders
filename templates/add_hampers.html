@@ -1,5 +1,3 @@
-<!-- add_hampers.html -->
-
 {% extends 'base.html' %}
 
 {% block title %}Add Hampers - CK PO App{% endblock %}
@@ -8,20 +6,71 @@
     <head>
         <title>Add Product</title>
         <style>
+            body {
+                font-family: 'Arial', sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 0;
+            }
+
+            .center_form {
+                width: 50%;
+                margin: auto;
+                margin-top: 20px;
+                padding: 20px;
+                background-color: #fff;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                border-radius: 5px;
+            }
+
             table {
                 width: 100%;
             }
-            .center_form{
-                width: 40%;
-                margin: auto;
-                margin-top: 20px;
-                background-color: #cccaca;
-                padding: 10px 10px 10px 10px;
+
+            /* .product-option {
+                float: none;
+                background-color: #ababab;
+            } */
+
+            input[type="text"],
+            input[type="number"] {
+                width: 80%;
+                padding: 8px;
+                margin: 5px 0;
+                display: inline-block;
+                border: 1px solid #ccc;
+                box-sizing: border-box;
             }
 
-            .product-option{
-                float:none;
-                background-color: #ababab;
+            input[type="submit"],
+            button {
+                background-color: #04AA6D;
+                color: #fff;
+                padding: 10px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+
+            input[type="submit"]:hover,
+            button:hover {
+                background-color: #038f5c;
+            }
+
+            /* #product-list {
+                border-collapse: collapse;
+                width: 80%;
+            }
+
+            .product-option td {
+                padding: 10px;
+                text-align: left;
+            } */
+
+            .quantity-input {
+                display: none;
+                width: 50px;
+                padding: 5px;
             }
         </style>
     </head>
@@ -38,15 +87,19 @@
                         <tr>
                             <td>Hamper Contents</td>
                             <td>
-                                <ul id="product-list" style="list-style-type: none; padding: 0;">
+                                <table id="product-list">
                                     {% for product in productsList %}
-                                        <li class="product-option">
-                                            <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
-                                            <label for="product_{{ product._id }}">{{ product.name }}</label>
-                                            <input type="number" name="quantities_{{ product._id }}" class="quantity-input" placeholder="Quantity" style="display: none;">
-                                        </li>
+                                        <tr class="product-option">
+                                            <td>
+                                                <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
+                                                <label for="product_{{ product._id }}">{{ product.name }}</label>
+                                            </td>
+                                            <td>
+                                                <input type="number" name="quantities_{{ product._id }}" class="quantity-input" value="0" style="display:none; width:30%">
+                                            </td>
+                                        </tr>
                                     {% endfor %}
-                                </ul>
+                                </table>                          
                             </td>
                         </tr>
                         <tr>
@@ -54,10 +107,18 @@
                             <td>
                                 <div id="priceInputs">
                                     <div class="price-input">
-                                        <label for="priceName">Price Name 1:</label>
-                                        <input type="text" name="priceName[]" style="width:20%">
-                                        <label for="priceValue">Price Value 1:</label>
-                                        <input type="number" name="priceValue[]" style="width:20%">
+                                        <table style="width:80%">
+                                            <tr>
+                                                <td>
+                                                    <label for="priceName">Price Name 1:</label>
+                                                    <input type="text" name="priceName[]" style="width:90px">
+                                                </td>
+                                                <td>
+                                                    <label for="priceName">Price Value 1:</label>
+                                                    <input type="number" name="priceValue[]"  style="width:90px">
+                                                </td>
+                                            </tr>
+                                        </table> 
                                     </div>
                                 </div>
                                 <button type="button" onclick="addPriceInput()">Add Price</button>
@@ -66,12 +127,11 @@
                         </tr>
                     </table>
                     <br>
-                    <input type="submit"></input>
+                    <input type="submit">
                 </div>
             </div>
         </form>
 
-        
         <script>
             function addPriceInput() {
                 const priceInputs = document.getElementById('priceInputs');
@@ -79,12 +139,20 @@
                 const count = priceInputs.childElementCount + 1;
 
                 newPriceInput.innerHTML = `
-                    <div class="price-input">
-                        <label for="priceName">Price Name ${count}:</label>
-                        <input type="text" name="priceName[]" required style="width:20%">
-                        <label for="priceValue">Price Value ${count}:</label>
-                        <input type="number" name="priceValue[]" required style="width:20%">
-                    </div>
+                <div class="price-input">
+                    <table style='width:80%'>
+                        <tr>
+                            <td>
+                                <label for="priceName">Price Name ${count}:</label>
+                                <input type="text" name="priceName[]" style="width:90px">
+                            </td>
+                            <td>
+                                <label for="priceName">Price Value ${count}:</label>
+                                <input type="number" name="priceValue[]" style="width:90px">
+                            </td>
+                        </tr>
+                    </table> 
+                </div>
                 `;
 
                 priceInputs.appendChild(newPriceInput);
@@ -97,22 +165,23 @@
                 }
             }
             document.addEventListener('DOMContentLoaded', function () {
-                var productList = document.getElementById('product-list');
+            var productList = document.getElementById('product-list');
 
-                productList.addEventListener('change', function (event) {
-                    var target = event.target;
+            productList.addEventListener('change', function (event) {
+                var target = event.target;
 
-                    if (target.type === 'checkbox') {
-                        var quantityInput = target.parentElement.querySelector('.quantity-input');
+                if (target.type === 'checkbox') {
+                    var quantityInput = target.parentElement.nextElementSibling.querySelector('.quantity-input');
 
-                        if (target.checked) {
-                            quantityInput.style.display = 'inline-block';
-                        } else {
-                            quantityInput.style.display = 'none';
-                        }
+                    if (target.checked) {
+                        quantityInput.style.display = 'table-cell';
+                    } else {
+                        quantityInput.style.display = 'none';
                     }
-                });
+                }
             });
+        });
+
         </script>
     </body>
 {% endblock %}
