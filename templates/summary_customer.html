@@ -23,7 +23,7 @@
             display:none;
         }
         .order-container{
-            width: 50%;
+            width: 60%;
             margin: auto;
             margin-top: 20px;
             padding: 20px;
@@ -63,17 +63,35 @@
         <p>
             Start Date: {{startDate}} <br>
             End Date: {{endDate}} <br>
-            Order Count: {{order_count}} <br>
         </p>
         <table>
             <tr>
                 <th>Customer Name</th>
-                <th>Quantity Spent</th>
+                <th>Amount Spent</th>
+                <th>Items Bought</th>
             </tr>
-            {% for item in data %}
+            {% for customer in data %}
             <tr>
-                <td>{{ item[1][0]}} </td>
-                <td>{{ item[1][1] | format_currency}} </td>
+                <td>
+                    {{ customer[1]['customer_name'] }} <br>
+                    {{ customer[1]['customer_address'] }}
+                </td>
+                <td>{{ (customer[1]['total_spent'])  | format_currency}} </td>
+                <td>
+                    <table>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Quantity</th>
+                        </tr>
+                        {% for product in customer[1]['products_quantity'].items() %}
+                        <tr>
+                            {% set product_name = product[0].split('&%$')[1] %}
+                            <td>{{product_name}}</td>
+                            <td>{{product[1]}}</td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </td>
             </tr>
             {% endfor %}
         </table>

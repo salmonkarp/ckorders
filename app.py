@@ -643,20 +643,20 @@ def summary():
     else:
         startDate = request.form.get('startDate')
         endDate = request.form.get('endDate')
-        OrderData = MClient['POs'].find(
-            {
-                'deliveryDate':{
-                    '$gte':startDate,
-                    '$lte':endDate
-                }
-            }
-        )
         CustomersData = MClient['Customers']
         ProductsDataRaw = MClient['Products']
         HampersData = MClient['Hampers']
         
         # sorting by products
         if request.form.get('viewType') == 'productSort':
+            OrderData = MClient['POs'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            )
             ProductsData = ProductsDataRaw.find()
             product_totals = {}
             customers_list = []
@@ -706,92 +706,139 @@ def summary():
             }
             return render_template('summary_product.html',data=summary_data, startDate = startDate, endDate = endDate, additional_details = additional_details)
         
-        # sort by customer
+        # sort by customer, archived
         else:
-            customer_totals = {}
-            product_totals = {}
-            result = []
-            
-            #collation
-            for order in OrderData:
-                customer = CustomersData.find_one({'_id': order['custID']})
-                products_data = []
-
-                for product in order.get('products', []):
-                    product_doc = ProductsDataRaw.find_one({'_id': product['product_id']})
-                    price_type = product.get('price_type', 'custom')
-                    price_value = product['custom_price'] if price_type == 'custom' else next(
-                        (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
-                    )
-                    products_data.append({
-                        'price_value': price_value,
-                        'quantity': product.get('quantity'),
-                        'discount': product.get('discount', 0.0)
-                    })
-
-                hampers_data = []
-
-                for hamper in order.get('hampers', []):
-                    hamper_doc = HampersData.find_one({'_id': hamper['product_id']})
-                    price_type = hamper.get('price_type', 'custom')
-                    price_value = hamper['custom_price'] if price_type == 'custom' else next(
-                        (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
-                    )
-                    hampers_data.append({
-                        'price_value': price_value,
-                        'quantity': hamper.get('quantity'),
-                        'discount': hamper.get('discount', 0.0)
-                    })
-
-                result.append({
-                    '_id': order['_id'],
-                    'custID': order['custID'],
-                    'customer_name': customer['name'],
-                    'customer_address': customer['address'],
-                    'products': products_data,
-                    'hampers': hampers_data,
-                    'orderDiscount': order.get('orderDiscount', 0.0)
-                })
-
-            #orderQuants
-            for order in result:
-                order_total = calculate_order_total(order)
-                order_total = order_total * (1 - (order['orderDiscount'] / 100.0))
-                
-                # for product in order.get('products',[]):
-                #     product_id = str(product['product_id'])
-                #     quantity = product['quantity']
-                #     product_totals[product_id] = product_totals.get(product_id, 0) + quantity
-                # for hamper in order.get('hampers',[]):
-                #     hamper_id = str(hamper['product_id'])
-                #     hamper_quantity = hamper['quantity']
-                #     hamper_details = HampersData.find_one({'_id':ObjectId(hamper_id)})
-                    
-                #     if hamper_details:
-                #         hamper_products = hamper_details['items']
-                #     else:
-                #         hamper_products = []
-                        
-                #     # print(hamper_products)
-                #     for product in hamper_products:
-                #         product_id = str(product['product_id'])
-                #         product_quantity = product['quantity']
-                #         product_totals[product_id] = product_totals.get(product_id, 0) + (product_quantity * hamper_quantity)
-                
-                
-                if order['custID'] in customer_totals.keys():
-                    customer_totals[order['custID']]['price_total'] += order_total
-                else:
-                    customer_totals[order['custID']] = {
-                        'name':order['customer_name'],
-                        'price_total':order_total,
-                        'products':product_totals,
+            OrderData = MClient['ArchivedPOs'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
                     }
-            
-            print(customer_totals)    
-            customer_totals = sorted(customer_totals.items(), key=lambda x: x[1][1], reverse=True)
-            print(customer_totals)
-            return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate, order_count = len(result))
+                }
+            )
+            customer_totals = {}
+            ProductsData = ProductsDataRaw.find()
+                
+            # calculating quantities of products and hampers (seperately) for each customer
+            for order in OrderData:
+                customer_key = str(order['custID']) + order['customer_name']
+                tmp_order_total = 0.0
+                
+                if customer_key not in customer_totals.keys():
+                    customer_totals[customer_key] = {
+                        'customer_name':order['customer_name'],
+                        'customer_address':order['customer_address'],
+                        'products_quantity':{},
+                        'total_spent':0.0
+                    }
+                
+                for product in order.get('products',[]):
+                    product_id = str(product['_id'])
+                    product_name = product['product_name']
+                    product_key = product_id + '&%$' + product_name
+                    
+                    quantity = product.get('quantity',0)
+                    price_name = product['price_type']
+                    price_value = product['price_value']
+                    product_discount = product.get('discount',0)
+                    tmp_price = price_value * (1 - (product_discount * 0.01))
+                    tmp_order_total = tmp_order_total + (quantity * tmp_price)
+                    
+                    customer_totals[customer_key]['products_quantity'][product_key] = customer_totals[customer_key]['products_quantity'].get(product_key, 0) + quantity
+                    
+                
+                for hamper in order.get('hampers',[]):
+                    hamper_id = str(hamper['_id'])
+                    hamper_name = hamper['hamper_name']
+                    hamper_key = hamper_id + '&%$' + hamper_name
 
+                    quantity = hamper['quantity']
+                    price_name = hamper['price_type']
+                    price_value = hamper['price_value']
+                    hamper_discount = hamper.get('discount',0)
+                    tmp_price = price_value * (1 - (hamper_discount * 0.01))
+                    tmp_order_total = tmp_order_total + (quantity * tmp_price)
+                    
+                    customer_totals[customer_key]['products_quantity'][hamper_key] = customer_totals[customer_key]['products_quantity'].get(hamper_key, 0) + quantity
+                    
+                customer_totals[customer_key]['total_spent'] += tmp_order_total * (1 - (order['orderDiscount'] * 0.01))
+
+            customer_totals = customer_totals.items()
+            customer_totals = sorted(customer_totals, key=lambda x:x[1]['total_spent'], reverse=True)
+            for customer in customer_totals:
+                customer[1]['products_quantity'] = dict(sorted(customer[1]['products_quantity'].items(), key=lambda x:x[1], reverse=True))
+            return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate)
+        
+
+@app.route('/archive_po/<poID>',methods=["GET","POST"])
+def archive_po(poID):
+    if request.method == 'GET':
+        return render_template('archive_po_confirm.html',poID = poID)
+    else:
+        order = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
+        customers_collection = MClient['Customers']
+        products_collection = MClient['Products']
+        hampers_collection = MClient['Hampers']
+        
+        customer = customers_collection.find_one({'_id': order['custID']})
+        products_data = []
+
+        for product in order.get('products', []):
+            product_doc = products_collection.find_one({'_id': product['product_id']})
+            price_type = product.get('price_type', 'custom')
+            price_value = product['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+            )
+            discount = product.get('discount', 0.0)
+            quantity = product.get('quantity')
+            
+            append_object = {
+                '_id': product['product_id'],
+                'product_name': product_doc['name'],
+                'quantity': quantity,
+                'price_type':price_type,
+                'price_value':price_value,
+            }
+            if discount > 0.0:
+                append_object['discount'] = discount
+            
+            products_data.append(append_object)
+
+        hampers_data = []
+
+        for hamper in order.get('hampers', []):
+            hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+            price_type = hamper.get('price_type', 'custom')
+            price_value = hamper['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+            )
+            discount = hamper.get('discount', 0.0)
+            quantity = hamper.get('quantity')
+            append_object = {
+                '_id': hamper['product_id'],
+                'hamper_name': hamper_doc['name'],
+                'quantity': hamper.get('quantity'),
+                'price_type':price_type,
+                'price_value':price_value,
+            }
+            if discount > 0.0:
+                append_object['discount'] = discount
+            hampers_data.append(append_object)
+        
+        archived_object = {
+            '_id': ObjectId(poID),
+            'custID':customer['_id'],
+            'customer_name': customer['name'],
+            'customer_address': customer['address'],
+            'deliveryDate': order['deliveryDate'],
+            'products': products_data,
+            'hampers': hampers_data,
+            'orderDiscount': order.get('orderDiscount', 0.0)
+        }
+        
+        MClient['ArchivedPOs'].insert_one(archived_object)
+        MClient['POs'].delete_many({'_id':ObjectId(poID)})
+        return redirect('/viewPOs')
+    
 if __name__ == '__main__':
     app.run()
