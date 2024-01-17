@@ -85,38 +85,29 @@
 </head>
 <body>
     <div class="center_form">
-        <h2>Products</h2>
         <!-- Table for product -->
         <div class="additional-options" id="product-options">
-            
-            <h2></h2>
+            <h2>Customers</h2>
             <table>
                 <tr>
                     <th>Name</th>
-                    <th>Current Stock</th>
-                    <th colspan="2">Prices</th>
+                    <th>Address</th>
+                    <th>Options</th>
                 </tr>
                 <tbody>
-                    {% for product in productsList %}
-                        {% for price in product.prices %}
-                            <tr>
-                                {% if loop.index0 == 0 %}
-                                    <td rowspan="{{ product.prices|length }}">
-                                        {{ product.name }} <br>
-                                        <a href="/edit_product/{{product['_id']}}" class="add">Edit</a>or
-                                        <a href="/edit_product/{{product['_id']}}" class="add">Delete</a>
-                                    </td>
-                                    <td rowspan="{{ product.prices|length }}">{{ product.currentStock }}</td>
-                                {% endif %}
-                                <td>{{ price.name }}</td>
-                                <td>{{ price.value |format_currency}}</td>
-                            </tr>
-                        {% endfor %}
+                    {% for customer in data %}
+                        <tr>
+                            <td>{{ customer.name }}</td>
+                            <td>{{ customer.address}}</td>
+                            <td>
+                                <a href='/edit_customer/{{customer._id}}' class="add">Edit</a>
+                                <a href='/delete_customer/{{customer._id}}' class="add">Delete</a>
+                            </td>
+                        </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <a href="/add_product"class="back">Add Product</a>
         <a href="/modify" onclick="goBack()" class="back">Back</a>
     </div>
 

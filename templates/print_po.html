@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Print PO{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+        .welcome-container {
+            width: 60%;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        h2 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="welcome-container">
+        <h2>Printing...</h2>
+        <embed src="data:application/pdf;base64,{{ encoded_content }}" type="application/pdf" width="100%" height="600px">
+    </div>
+</body>
+{% endblock %}

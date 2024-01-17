@@ -31,7 +31,7 @@
         }
 
         .hamper-detail-container {
-            margin-bottom: 20px;
+            margin-bottom: 5px;
         }
 
         table {
@@ -128,14 +128,15 @@
 <body>
     <div class="center_form">
         <!-- Table for hampers -->
+        <h2>Hampers</h2>
         <div class="additional-options" id="hampers-options">
-            <a href="/add_hampers"class="back">Add Hampers</a>
+            
             {% for hamper in hampersList %}
                 <div class="main-hamper-container">
                     <div class="hamper-detail-container">
                         <div style='font-weight:bold'>Name: {{ hamper.name }} </div>
-                        <a href="/edit_hampers/{{hamper['_id']}}">Edit</a> or
-                        <a href="/delete_hampers/{{hamper['_id']}}">Delete</a>
+                        <a href="/edit_hampers/{{hamper['_id']}}" class="add">Edit </a>
+                        <a href="/delete_hampers/{{hamper['_id']}}" class="add">Delete </a>
                     </div>
                     <div class="hamperTablesContainer">
                         <table class="hamperTable">
@@ -174,6 +175,7 @@
                 </div>
             {% endfor %}
         </div>
+        <a href="/add_hampers"class="back">Add Hampers</a>
         <a href="/modify" class="back">Back</a>
     </div>
 

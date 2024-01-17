@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .center_form {
+            width: 50%;
+            margin: auto;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .product-option {
+            float: none;
+            background-color: #ababab;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 80%;
+            padding: 8px;
+            margin: 5px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"],
+        button {
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover,
+        button:hover {
+            background-color: #038f5c;
+        }
+    </style>
+</head>
+<body>
+    <form action="/edit_customer_submit/{{data['_id']}}" method="post" enctype="multipart/form-data">
+        <div class="center_form">
+            <table style="border:none">
+                <tr>
+                    <td style="width:30%">Customer Name</td>
+                    <td><input type="text" name="name" value="{{data['name']}}"></td>
+                </tr>
+                <tr>
+                    <td>Customer Address</td>
+                    <td><input type="text" id="address" name="address" value="{{data['address']}}"></td>
+                </tr>
+            </table>
+            <!-- submit -->
+            <br>
+            <input type="submit">
+        </div>
+    </form>
+</body>
+<script>
+</script>
+{% endblock %}

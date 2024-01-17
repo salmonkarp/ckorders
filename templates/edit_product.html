@@ -5,12 +5,71 @@
 {% block content %}
 <head>
     <style>
-        .center_form{
-            width: 40%;
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .center_form {
+            width: 50%;
             margin: auto;
             margin-top: 20px;
-            background-color: #cccaca;
-            padding: 10px 10px 10px 10px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .product-option {
+            float: none;
+            background-color: #ababab;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 80%;
+            padding: 8px;
+            margin: 5px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"],
+        button {
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover,
+        button:hover {
+            background-color: #038f5c;
+        }
+
+        #product-list {
+            border-collapse: collapse;
+            width: 80%;
+        }
+
+        .product-option td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        .quantity-input {
+            display: none;
+            width: 50px;
+            padding: 5px;
         }
     </style>
 </head>
@@ -34,12 +93,10 @@
                                 <div>
                                     <input type="hidden" name="priceId" value="{{ product.prices[loop_price]._id }}">
                                     <label for="priceName{{ loop_price }}">Price Name:</label>
-                                    <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ product.prices[loop_price].name }}" required>
-                                    <br>
+                                    <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ product.prices[loop_price].name }}" required  style="width:30%">
                     
                                     <label for="priceValue{{ loop_price }}">Price Value:</label>
-                                    <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ product.prices[loop_price].value }}" required>
-                                    <br>
+                                    <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ product.prices[loop_price].value }}" required  style="width:30%">
                                 </div>
                             {% endfor %}
                         </div>                        
@@ -67,12 +124,10 @@
 
         newPriceField.innerHTML = `
             <label for="priceName${priceCounter}">Price Name:</label>
-            <input type="text" name="priceName" required>
-            <br>
+            <input type="text" name="priceName" required  style="width:30%">
 
             <label for="priceValue${priceCounter}">Price Value:</label>
-            <input type="number" name="priceValue" required>
-            <br>
+            <input type="number" name="priceValue" required  style="width:30%">
         `;
 
         pricesContainer.appendChild(newPriceField);

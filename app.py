@@ -1,13 +1,21 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, send_file
+from openpyxl import load_workbook
 from dotenv import load_dotenv
 from flask_cors import CORS
 from bson.objectid import ObjectId
 from datetime import datetime
 import pprint, locale, os, pymongo, sqlite3
 from babel.numbers import format_currency as fcrr
+from babel.dates import format_date, format_datetime, format_time
+from babel import Locale
+import jpype
+import asposecells
+import fitz
+import base64
 
 # Load environment variables from .env file
 load_dotenv()
+jpype.startJVM() 
 
 # helper functions
 def open_DB(db):
@@ -28,14 +36,45 @@ def calculate_order_total(po):
         item_subtotal = (price_value - discount_value) * quantity
         order_total += item_subtotal
     return order_total
+def remove_text_from_pdf(input_pdf_path, output_pdf_path):
+    # Open the PDF file
+    pdf_document = fitz.open(input_pdf_path)
+
+    # Get the first page
+    first_page = pdf_document[0]
+
+    # Search for the red text on the top of the page
+    rect = first_page.search_for("Evaluation Only. Created with Aspose.Cells for Python via Java.Copyright 2003 - 2024 Aspose Pty Ltd.")[0]
+    print(rect)
+    # Remove the red text by drawing over it with a white rectangle
+    page_bound = first_page.bound()
+    print(page_bound)
+    # new_x0 = 
+    new_rect = fitz.Rect(rect.x0, page_bound.y1 - rect.y1, rect.x1, page_bound.y1 )
+    print(new_rect)
+    first_page.draw_rect(new_rect, fill=(1,1,1), color=(1,1,1))
+
+    # Save the modified PDF to a new file
+    pdf_document.save(output_pdf_path)
+
+    # Close the PDF document
+    pdf_document.close()
+def encode_pdf_as_base64(file_path):
+    with open(file_path, 'rb') as pdf_file:
+        pdf_content = pdf_file.read()
+        encoded_content = base64.b64encode(pdf_content).decode('utf-8')
+        return encoded_content
 
 # objects creation
 app = Flask(__name__)
+
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 MClient = pymongo.MongoClient(MCString)['CK']
 app.jinja_env.filters['format_currency'] = format_currency
+locale = Locale.parse('id_ID')
 CORS(app)  # Enable CORS for all routes and origins
+TEMPLATE_PATH = 'order.xlsx'
 
 # Configure FLASK_DEBUG from environment variable
 app.config['DEBUG'] = os.environ.get('FLASK_DEBUG')
@@ -769,7 +808,6 @@ def summary():
                 customer[1]['products_quantity'] = dict(sorted(customer[1]['products_quantity'].items(), key=lambda x:x[1], reverse=True))
             return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate)
         
-
 @app.route('/archive_po/<poID>',methods=["GET","POST"])
 def archive_po(poID):
     if request.method == 'GET':
@@ -839,6 +877,145 @@ def archive_po(poID):
         MClient['ArchivedPOs'].insert_one(archived_object)
         MClient['POs'].delete_many({'_id':ObjectId(poID)})
         return redirect('/viewPOs')
+
+@app.route('/edit_view_customer',methods=['GET'])
+def edit_view_customer():
+    customers_data = list(MClient['Customers'].find())
+    return render_template('edit_view_customer.html',data = customers_data)
+
+@app.route('/edit_customer/<custID>',methods=['GET'])
+def edit_customer(custID):
+    customer_data = dict(MClient['Customers'].find_one({'_id':ObjectId(custID)}))
+    return render_template('edit_customer.html',data = customer_data)
+
+@app.route('/edit_customer_submit/<custID>',methods=['POST'])
+def edit_customer_submit(custID):
+    name = request.form.get('name')
+    address = request.form.get('address')
+    MClient['Customers'].update_many({'_id':ObjectId(custID)},{
+        '$set':{
+            'name':name,
+            'address':address
+        }
+    })
+    return redirect('/edit_view_customer')
+
+@app.route('/print_po/<poID>',methods=['GET'])
+def print_po(poID):
+    output_path = f"excel_results/output_{poID}.xlsx"
+    order = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
+    products_collection = MClient['Products']  # Assuming this is the correct name for the Products collection
+    hampers_collection = MClient['Hampers']
+    customers_collection = MClient['Customers']
     
+    customer = customers_collection.find_one({'_id': order['custID']})
+    products_data = []
+
+    for product in order.get('products', []):
+        product_doc = products_collection.find_one({'_id': product['product_id']})
+        price_type = product.get('price_type', 'custom')
+        price_value = product['custom_price'] if price_type == 'custom' else next(
+            (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+        )
+        products_data.append({
+            'name': product_doc['name'],
+            'price_name': price_type,
+            'price_value': price_value,
+            'quantity': product.get('quantity'),
+            'discount': product.get('discount', 0.0)
+        })
+
+    hampers_data = []
+
+    for hamper in order.get('hampers', []):
+        hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+        price_type = hamper.get('price_type', 'custom')
+        price_value = hamper['custom_price'] if price_type == 'custom' else next(
+            (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+        )
+        hampers_data.append({
+            'name': hamper_doc['name'],
+            'price_name': price_type,
+            'price_value': price_value,
+            'quantity': hamper.get('quantity'),
+            'discount': hamper.get('discount', 0.0)
+        })
+
+    result = {
+        '_id': order['_id'],
+        'customer_name': customer['name'],
+        'customer_address': customer['address'],
+        'deliveryDate': order['deliveryDate'],
+        'products': products_data,
+        'hampers': hampers_data,
+        'orderDiscount': order.get('orderDiscount', 0.0)
+    }
+                
+    template_path = 'order.xlsx'
+    wb = load_workbook(template_path)
+    
+    sheet = wb.active
+    order_total = 0.0
+    #handling customer
+    dateObject = datetime.strptime(result['deliveryDate'],"%Y-%m-%d")
+    formatted_date = format_date(dateObject, locale='id_ID')
+    sheet['K1'] = formatted_date
+    sheet['K3'] = result['customer_name']
+    sheet['K4'] = result['customer_address']
+    item_counter = 0
+    for product in result['products'] + result['hampers']:
+        sheet['G'+str(item_counter + 15)] = f"{product['quantity']}"
+        sheet['H'+str(item_counter + 15)] = 'pcs'
+        sheet['I'+str(item_counter + 15)] = f"{product['name']}"
+        price_value = product['price_value']
+        price_name = product['price_name']
+        quantity = product['quantity']
+        sheet['J'+str(item_counter + 15)] = f"{int(price_value)} ({price_name[0]})"
+        if product['discount'] > 0.0:
+            discount = product['discount']
+            discount_value = round(discount * 0.01 * price_value / 100) * 100
+            final_value = int(price_value - discount_value)
+            print(final_value)
+            sheet['J'+str(item_counter + 16)] = f"-{discount_value} ({discount}%)"
+            sheet['J'+str(item_counter + 17)] = f"  ={final_value}"
+            sheet['K'+str(item_counter + 15)] = int(final_value * quantity)
+            order_total += final_value * quantity
+            item_counter += 3
+        else:
+            total_value = int(price_value * quantity)
+            sheet['K'+str(item_counter + 15)] = total_value
+            order_total += total_value
+            item_counter += 1
+    
+    print(order_total)
+    if result['orderDiscount'] > 0.0:
+        sheet['J30'] = "Subtotal"
+        sheet['K30'] = order_total
+        sheet['J31'] = f"Discount {round(result['orderDiscount'])}%"
+        discount_value = round(result['orderDiscount'] * 0.01 * order_total / 100) * 100
+        sheet['K31'] = discount_value
+        sheet['K32'] = order_total - discount_value
+    else:
+        sheet['K32'] = order_total
+    
+    output_directory = 'pdf_results'
+    os.makedirs(output_directory, exist_ok=True)
+    output_excel_path = os.path.join(output_directory, 'output.xlsx')
+    output_pdf_path = os.path.join(output_directory, 'output.pdf')
+    wb.save(output_excel_path)
+    
+    
+    from asposecells.api import Workbook
+    workbook = Workbook(output_excel_path)
+    workbook.save(output_pdf_path)
+    updated_path = os.path.join(output_directory, 'output_updated.pdf')
+    print(output_pdf_path, updated_path)
+    remove_text_from_pdf(output_pdf_path, updated_path)
+    encoded_pdf_content = encode_pdf_as_base64(updated_path)
+    return render_template('print_po.html',encoded_content = encoded_pdf_content)
+    
+    
+    
+
 if __name__ == '__main__':
     app.run()
