@@ -4,12 +4,16 @@ from dotenv import load_dotenv
 from flask_cors import CORS
 from bson.objectid import ObjectId
 from datetime import datetime
-import pprint, locale, os, pymongo, sqlite3
+import pprint, os, pymongo, sqlite3
 from babel.numbers import format_currency as fcrr
 from babel.dates import format_date, format_datetime, format_time
 from babel import Locale
 import base64
-import ezodf
+from reportlab.lib.units import cm
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Table, TableStyle, Paragraph
 
 import os
 
@@ -45,15 +49,6 @@ def encode_pdf_as_base64(file_path):
         pdf_content = pdf_file.read()
         encoded_content = base64.b64encode(pdf_content).decode('utf-8')
         return encoded_content
-def convert_excel_to_pdf(input_excel, output_pdf):
-    # Load the Excel file
-    spreadsheet = ezodf.opendoc(input_excel)
-
-    # Do any necessary operations on the spreadsheet (optional)
-
-    # Save the spreadsheet as a PDF
-    spreadsheet.saveas(output_pdf, 'pdf')
-
 # def excel_to_pdf(input_excel, output_pdf):
 #     try:
 #         pythoncom.CoInitialize()
@@ -82,6 +77,7 @@ def convert_excel_to_pdf(input_excel, output_pdf):
 
 # objects creation
 app = Flask(__name__)
+
 
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
@@ -965,64 +961,102 @@ def print_po(poID):
         'hampers': hampers_data,
         'orderDiscount': order.get('orderDiscount', 0.0)
     }
-                
-    template_path = 'order.xlsx'
-    wb = load_workbook(template_path)
     
-    sheet = wb.active
+    output_directory = 'pdf_results'
+    os.makedirs(output_directory, exist_ok=True)
+    output_pdf_path = os.path.join('pdf_results', 'output.pdf')
+    
+    page_height_cm = 21.3 * cm
+    page_size = (16.2 * cm, 21.3 * cm)
+    pdf = canvas.Canvas(output_pdf_path, pagesize=page_size)
+    # pdf = SimpleDocTemplate(output_pdf_path, pagesize=page_size)
+    content = []
+    labels = []
     order_total = 0.0
+    
     #handling customer
     dateObject = datetime.strptime(result['deliveryDate'],"%Y-%m-%d")
     formatted_date = format_date(dateObject, locale='id_ID')
-    sheet['K1'] = formatted_date
-    sheet['K3'] = result['customer_name']
-    sheet['K4'] = result['customer_address']
+    labels.append((formatted_date, (11.5 * cm, page_height_cm - 0.7 * cm)))
+    labels.append((result['customer_name'], (10.8 * cm, page_height_cm - 2.2 * cm)))
+    labels.append((result['customer_address'], (10.8 * cm, page_height_cm - 2.9 * cm)))
+    
+    for text, (x, y) in labels:
+        tempPara = Paragraph(text,style=getSampleStyleSheet()['BodyText'])
+        tempPara.wrapOn(pdf,300,300)
+        tempPara.drawOn(pdf,x,y)
+        # pdf.drawString(x,y,text)
+        
+    table_data = []
     item_counter = 0
     for product in result['products'] + result['hampers']:
-        sheet['G'+str(item_counter + 15)] = f"{product['quantity']}"
-        sheet['H'+str(item_counter + 15)] = 'pcs'
-        sheet['I'+str(item_counter + 15)] = f"{product['name']}"
+        current_row_data= []
+        current_row_data.append(f"{product['quantity']} pcs")
+        current_row_data.append(f"{product['name']}")
+        
         price_value = product['price_value']
         price_name = product['price_name']
         quantity = product['quantity']
-        sheet['J'+str(item_counter + 15)] = f"{int(price_value)} ({price_name[0]})"
+        current_row_data.append(f"{int(price_value)} ({price_name[0]})")
+        
         if product['discount'] > 0.0:
             discount = product['discount']
             discount_value = round(discount * 0.01 * price_value / 100) * 100
             final_value = int(price_value - discount_value)
-            print(final_value)
-            sheet['J'+str(item_counter + 16)] = f"-{discount_value} ({discount}%)"
-            sheet['J'+str(item_counter + 17)] = f"  ={final_value}"
-            sheet['K'+str(item_counter + 15)] = int(final_value * quantity)
+            
+            discount_row_data = ["",f"Discount ({discount}%)",f"-{discount_value}", ""]
+            final_value_data = ["","",f"  ={final_value}",""]
+            current_row_data.append(int(final_value * quantity))
             order_total += final_value * quantity
+            table_data.append(current_row_data, discount_row_data, final_value_data)
             item_counter += 3
         else:
             total_value = int(price_value * quantity)
-            sheet['K'+str(item_counter + 15)] = total_value
+            current_row_data.append(total_value)
             order_total += total_value
+            table_data.append(current_row_data)
             item_counter += 1
     
-    print(order_total)
+    print(table_data)
     if result['orderDiscount'] > 0.0:
-        sheet['J30'] = "Subtotal"
-        sheet['K30'] = order_total
-        sheet['J31'] = f"Discount {round(result['orderDiscount'])}%"
+        rows_to_append = 15 - item_counter
+        for i in range(rows_to_append): table_data.append(["","","",""])
+        table_data.append(["","Subtotal","",f"{round(order_total/100)*100}"])
         discount_value = round(result['orderDiscount'] * 0.01 * order_total / 100) * 100
-        sheet['K31'] = discount_value
-        sheet['K32'] = order_total - discount_value
+        table_data.append(["",f"Order Discount ({round(result['orderDiscount'])}%)","",f"-{discount_value}"])
+        final_value = round((order_total - discount_value) / 100) * 100
+        table_data.append(["","","",f"{final_value}"])
     else:
-        sheet['K32'] = order_total
-    
-    output_directory = 'pdf_results'
-    os.makedirs(output_directory, exist_ok=True)
-    output_excel_path = os.path.join(output_directory, 'output.xlsx')
-    output_pdf_path = os.path.join(output_directory, 'output.pdf')
-    wb.save(output_excel_path)
+        rows_to_append = 17 - item_counter
+        for i in range(rows_to_append): table_data.append(["","","",""])
+        table_data.append(["","","",f"{round(order_total/100)*100}"])
     
     
+    col_widths_cm = [2.2 * cm, 6.8 * cm, 2.4 * cm, 2.8 * cm]
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),  # White background for the header row
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),  # Text color for the header row
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white), # White background for data rows
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),       # Arial font for data rows
+    ])
+    print(table_data)
+    table = Table(table_data, colWidths=col_widths_cm)
+    table.setStyle(table_style)
+    table_x = 1 * cm
+    table_y = 4 * cm
+    table_position = (table_x, page_size[1] - table_y)
+    print(table_position)
+    table.leftIndent = table_x
+    table.topIndent = page_size[1] - table_y
+    
+    # pdf.line(0,0,100,100)
+    table.wrapOn(pdf,0,0)
+    table.drawOn(pdf,table_x,table_y)
+    pdf.showPage()
+    pdf.save()
     
     print(output_pdf_path)
-    convert_excel_to_pdf(output_excel_path, output_pdf_path)
     encoded_pdf_content = encode_pdf_as_base64(output_pdf_path)
     return render_template('print_po.html',encoded_content = encoded_pdf_content)
     
