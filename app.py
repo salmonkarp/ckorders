@@ -9,7 +9,7 @@ from babel.numbers import format_currency as fcrr
 from babel.dates import format_date, format_datetime, format_time
 from babel import Locale
 import base64
-from pyoo import Calc
+import ezodf
 
 import os
 
@@ -46,17 +46,13 @@ def encode_pdf_as_base64(file_path):
         encoded_content = base64.b64encode(pdf_content).decode('utf-8')
         return encoded_content
 def convert_excel_to_pdf(input_excel, output_pdf):
-    desktop = Calc()
-    doc = desktop.open_spreadsheet(input_excel)
+    # Load the Excel file
+    spreadsheet = ezodf.opendoc(input_excel)
 
-    # Save as PDF
-    doc.save_as(output_pdf, 'pdf')
+    # Do any necessary operations on the spreadsheet (optional)
 
-    # Close the document
-    doc.close()
-
-    # Close the desktop
-    desktop.close()
+    # Save the spreadsheet as a PDF
+    spreadsheet.saveas(output_pdf, 'pdf')
 
 # def excel_to_pdf(input_excel, output_pdf):
 #     try:
