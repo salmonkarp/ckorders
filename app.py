@@ -78,6 +78,7 @@ def encode_pdf_as_base64(file_path):
 # objects creation
 app = Flask(__name__)
 
+os.environ['MONGOKEY'] = "l6ws7zM0vFplKeTc"
 
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
@@ -977,9 +978,9 @@ def print_po(poID):
     #handling customer
     dateObject = datetime.strptime(result['deliveryDate'],"%Y-%m-%d")
     formatted_date = format_date(dateObject, locale='id_ID')
-    labels.append((formatted_date, (11.5 * cm, page_height_cm - 0.7 * cm)))
-    labels.append((result['customer_name'], (10.8 * cm, page_height_cm - 2.2 * cm)))
-    labels.append((result['customer_address'], (10.8 * cm, page_height_cm - 2.9 * cm)))
+    labels.append((formatted_date, (13.5 * cm, page_height_cm - 1.5 * cm)))
+    labels.append((result['customer_name'], (12.8 * cm, page_height_cm - 2.7 * cm)))
+    labels.append((result['customer_address'], (12.8 * cm, page_height_cm - 3.4 * cm)))
     
     for text, (x, y) in labels:
         tempPara = Paragraph(text,style=getSampleStyleSheet()['BodyText'])
@@ -1008,7 +1009,9 @@ def print_po(poID):
             final_value_data = ["","",f"  ={final_value}",""]
             current_row_data.append(int(final_value * quantity))
             order_total += final_value * quantity
-            table_data.append(current_row_data, discount_row_data, final_value_data)
+            table_data.append(current_row_data)
+            table_data.append(discount_row_data)
+            table_data.append(final_value_data)
             item_counter += 3
         else:
             total_value = int(price_value * quantity)
@@ -1019,7 +1022,7 @@ def print_po(poID):
     
     print(table_data)
     if result['orderDiscount'] > 0.0:
-        rows_to_append = 15 - item_counter
+        rows_to_append = 13 - item_counter
         for i in range(rows_to_append): table_data.append(["","","",""])
         table_data.append(["","Subtotal","",f"{round(order_total/100)*100}"])
         discount_value = round(result['orderDiscount'] * 0.01 * order_total / 100) * 100
@@ -1027,7 +1030,7 @@ def print_po(poID):
         final_value = round((order_total - discount_value) / 100) * 100
         table_data.append(["","","",f"{final_value}"])
     else:
-        rows_to_append = 17 - item_counter
+        rows_to_append = 15 - item_counter
         for i in range(rows_to_append): table_data.append(["","","",""])
         table_data.append(["","","",f"{round(order_total/100)*100}"])
     
@@ -1043,7 +1046,7 @@ def print_po(poID):
     print(table_data)
     table = Table(table_data, colWidths=col_widths_cm)
     table.setStyle(table_style)
-    table_x = 1 * cm
+    table_x = 2 * cm
     table_y = 4 * cm
     table_position = (table_x, page_size[1] - table_y)
     print(table_position)
