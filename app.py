@@ -8,14 +8,17 @@ import pprint, locale, os, pymongo, sqlite3
 from babel.numbers import format_currency as fcrr
 from babel.dates import format_date, format_datetime, format_time
 from babel import Locale
-import jpype
-import asposecells
-import fitz
 import base64
+import subprocess
+import os
+
+#own libraries
+# import win32com.client
+# import time
+# import pythoncom
 
 # Load environment variables from .env file
 load_dotenv()
-jpype.startJVM() 
 
 # helper functions
 def open_DB(db):
@@ -36,34 +39,44 @@ def calculate_order_total(po):
         item_subtotal = (price_value - discount_value) * quantity
         order_total += item_subtotal
     return order_total
-def remove_text_from_pdf(input_pdf_path, output_pdf_path):
-    # Open the PDF file
-    pdf_document = fitz.open(input_pdf_path)
-
-    # Get the first page
-    first_page = pdf_document[0]
-
-    # Search for the red text on the top of the page
-    rect = first_page.search_for("Evaluation Only. Created with Aspose.Cells for Python via Java.Copyright 2003 - 2024 Aspose Pty Ltd.")[0]
-    print(rect)
-    # Remove the red text by drawing over it with a white rectangle
-    page_bound = first_page.bound()
-    print(page_bound)
-    # new_x0 = 
-    new_rect = fitz.Rect(rect.x0, page_bound.y1 - rect.y1, rect.x1, page_bound.y1 )
-    print(new_rect)
-    first_page.draw_rect(new_rect, fill=(1,1,1), color=(1,1,1))
-
-    # Save the modified PDF to a new file
-    pdf_document.save(output_pdf_path)
-
-    # Close the PDF document
-    pdf_document.close()
 def encode_pdf_as_base64(file_path):
     with open(file_path, 'rb') as pdf_file:
         pdf_content = pdf_file.read()
         encoded_content = base64.b64encode(pdf_content).decode('utf-8')
         return encoded_content
+def convert_excel_to_pdf(input_excel, output_pdf):
+    try:
+        # Run unoconv to convert Excel to PDF
+        subprocess.run(['unoconv', '-f', 'pdf', '-o', output_pdf, input_excel], check=True)
+        print(f"Conversion successful: {input_excel} -> {output_pdf}")
+    except subprocess.CalledProcessError as e:
+        print(f"Conversion failed: {e}")
+
+# def excel_to_pdf(input_excel, output_pdf):
+#     try:
+#         pythoncom.CoInitialize()
+#         excel = win32com.client.Dispatch("Excel.Application")
+#         excel.Visible = False
+
+#         # Open the Excel file
+#         wb = excel.Workbooks.Open(os.path.abspath(input_excel))
+
+#         # Save as PDF
+#         wb.ExportAsFixedFormat(0, os.path.abspath(output_pdf), Quality=1)
+
+#         # Close the workbook
+#         wb.Close()
+
+#         # Wait until Excel has finished its operations
+#         while excel.Workbooks.Count > 0:
+#             time.sleep(1)
+
+#         print(f"Conversion successful: {input_excel} -> {output_pdf}")
+#     except Exception as e:
+#         print(f"Conversion failed: {e}")
+#     finally:
+#         # Quit Excel application
+#         excel.Quit()
 
 # objects creation
 app = Flask(__name__)
@@ -1005,17 +1018,14 @@ def print_po(poID):
     wb.save(output_excel_path)
     
     
-    from asposecells.api import Workbook
-    workbook = Workbook(output_excel_path)
-    workbook.save(output_pdf_path)
-    updated_path = os.path.join(output_directory, 'output_updated.pdf')
-    print(output_pdf_path, updated_path)
-    remove_text_from_pdf(output_pdf_path, updated_path)
-    encoded_pdf_content = encode_pdf_as_base64(updated_path)
+    
+    print(output_pdf_path)
+    convert_excel_to_pdf(output_excel_path, output_pdf_path)
+    encoded_pdf_content = encode_pdf_as_base64(output_pdf_path)
     return render_template('print_po.html',encoded_content = encoded_pdf_content)
     
     
     
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=5000)
