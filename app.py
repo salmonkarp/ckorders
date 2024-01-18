@@ -9,8 +9,8 @@ from babel.numbers import format_currency as fcrr
 from babel.dates import format_date, format_datetime, format_time
 from babel import Locale
 import base64
-from unotools import Socket, connect
-from unotools.component.writer import Writer
+from pyoo import Calc
+
 import os
 
 #own libraries
@@ -46,25 +46,17 @@ def encode_pdf_as_base64(file_path):
         encoded_content = base64.b64encode(pdf_content).decode('utf-8')
         return encoded_content
 def convert_excel_to_pdf(input_excel, output_pdf):
-    try:
-        with Socket("localhost", 2002) as uno_socket:
-            context = connect(uno_socket)
-            desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
+    desktop = Calc()
+    doc = desktop.open_spreadsheet(input_excel)
 
-            input_url = f"file:///{os.path.abspath(input_excel).replace(os.sep, '/')}"
-            output_url = f"file:///{os.path.abspath(output_pdf).replace(os.sep, '/')}"
+    # Save as PDF
+    doc.save_as(output_pdf, 'pdf')
 
-            document = desktop.loadComponentFromURL(input_url, "_blank", 0, ())
+    # Close the document
+    doc.close()
 
-            try:
-                pdf_export = Writer(document)
-                pdf_export.storeToURL(output_url, ())
-            finally:
-                document.close(True)
-
-        print(f"Conversion successful: {input_excel} -> {output_pdf}")
-    except Exception as e:
-        print(f"Conversion failed: {e}")
+    # Close the desktop
+    desktop.close()
 
 # def excel_to_pdf(input_excel, output_pdf):
 #     try:
