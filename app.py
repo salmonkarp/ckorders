@@ -9,7 +9,8 @@ from babel.numbers import format_currency as fcrr
 from babel.dates import format_date, format_datetime, format_time
 from babel import Locale
 import base64
-import subprocess
+from unotools import Socket, connect
+from unotools.component.writer import Writer
 import os
 
 #own libraries
@@ -45,12 +46,20 @@ def encode_pdf_as_base64(file_path):
         encoded_content = base64.b64encode(pdf_content).decode('utf-8')
         return encoded_content
 def convert_excel_to_pdf(input_excel, output_pdf):
-    try:
-        # Run unoconv to convert Excel to PDF
-        subprocess.run(['unoconv', '-f', 'pdf', '-o', output_pdf, input_excel], check=True)
-        print(f"Conversion successful: {input_excel} -> {output_pdf}")
-    except subprocess.CalledProcessError as e:
-        print(f"Conversion failed: {e}")
+    with Socket("localhost", 2002) as uno_socket:
+        context = connect(uno_socket)
+        desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
+
+        input_url = f"file:///{input_excel.replace('\\', '/')}"
+        output_url = f"file:///{output_pdf.replace('\\', '/')}"
+
+        document = desktop.loadComponentFromURL(input_url, "_blank", 0, ())
+
+        try:
+            pdf_export = Writer(document)
+            pdf_export.storeToURL(output_url, ())
+        finally:
+            document.close(True)
 
 # def excel_to_pdf(input_excel, output_pdf):
 #     try:
