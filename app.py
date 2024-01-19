@@ -1,9 +1,9 @@
-from flask import Flask, render_template, request, redirect, send_file
+from flask import Flask, render_template, request, redirect, session, url_for
 from openpyxl import load_workbook
 from dotenv import load_dotenv
 from flask_cors import CORS
 from bson.objectid import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import pprint, os, pymongo, sqlite3
 from babel.numbers import format_currency as fcrr
 from babel.dates import format_date, format_datetime, format_time
@@ -14,6 +14,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle, Paragraph
+from bson import json_util
+
 
 import os
 
@@ -77,6 +79,7 @@ def encode_pdf_as_base64(file_path):
 
 # objects creation
 app = Flask(__name__)
+app.secret_key = os.environ["SECRETKEY"]
 
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
@@ -88,6 +91,35 @@ TEMPLATE_PATH = 'order.xlsx'
 
 # Configure FLASK_DEBUG from environment variable
 app.config['DEBUG'] = os.environ.get('FLASK_DEBUG')
+
+# Custom decorator to check the last access time
+def requires_login_if_inactive(minutes=5):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if 'user_id' in session:
+                last_access_time = session.get('last_access_time', datetime.min)
+                if last_access_time + timedelta(minutes=minutes) < datetime.now():
+                    return func(*args, **kwargs)
+            return redirect(url_for('login'))
+        return wrapper
+    return decorator
+
+@app.before_request
+def check_login():
+    # List of routes that do not require login
+    exempt_routes = ['login', 'static']
+    print(request.endpoint)
+    if request.endpoint and request.endpoint not in exempt_routes:
+        print(session)
+        if 'user_id' not in session or 'last_access_time' not in session:
+            # print('must login')
+            return redirect(url_for('login'))
+        
+        last_access_time = session['last_access_time']
+        last_access_time = last_access_time.replace(tzinfo=timezone.utc)
+        if last_access_time + timedelta(minutes=15) < datetime.now(timezone.utc):
+            print('must login2')
+            return redirect(url_for('login'))
 
 # home
 @app.route("/",methods=["GET"])
@@ -839,6 +871,7 @@ def archive_po(poID):
             )
             discount = product.get('discount', 0.0)
             quantity = product.get('quantity')
+            currentStock = product_doc.get('currentStock',0)
             
             append_object = {
                 '_id': product['product_id'],
@@ -850,6 +883,11 @@ def archive_po(poID):
             if discount > 0.0:
                 append_object['discount'] = discount
             
+            products_collection.update_one({'_id': product['product_id']}, {
+                '$set':{
+                    'currentStock':currentStock - quantity
+                }
+            })
             products_data.append(append_object)
 
         hampers_data = []
@@ -871,6 +909,15 @@ def archive_po(poID):
             }
             if discount > 0.0:
                 append_object['discount'] = discount
+            
+            for product in hamper_doc['items']:
+                product_doc = products_collection.find_one({'_id': product['product_id']})
+                currentStock = product_doc.get('currentStock',0)
+                products_collection.update_one({'_id': product['product_id']}, {
+                    '$set':{
+                        'currentStock':currentStock - (quantity * product['quantity'])
+                    }
+                })
             hampers_data.append(append_object)
         
         archived_object = {
@@ -910,6 +957,11 @@ def edit_customer_submit(custID):
     })
     return redirect('/edit_view_customer')
 
+@app.route('/delete_customer/<custID>',methods=["GET","POST"])
+def delete_customer(custID):
+    MClient['Customers'].delete_many({'_id':ObjectId(custID)})
+    return redirect('/edit_view_customer')
+    
 @app.route('/print_po/<poID>',methods=['GET'])
 def print_po(poID):
     output_path = f"excel_results/output_{poID}.xlsx"
@@ -1060,7 +1112,30 @@ def print_po(poID):
     print(output_pdf_path)
     encoded_pdf_content = encode_pdf_as_base64(output_pdf_path)
     return render_template('print_po.html',encoded_content = encoded_pdf_content)
-    
+
+@app.route('/login', methods=["GET","POST"])
+def login():
+    if 'user_id' in session:
+        # print('test')
+        return redirect('/')
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user_details = dict(MClient['Users'].find_one({'username':username, 'password':password}))
+        # Simulate user authentication (replace with your actual authentication logic)
+        if user_details:
+            session['user_id'] = user_details['username']
+            session['last_access_time'] = datetime.now()
+            print('successful login')
+            return redirect('/')
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    session.pop('last_access_time', None)
+    return render_template('logout.html')
     
     
 
