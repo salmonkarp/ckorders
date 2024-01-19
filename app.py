@@ -119,7 +119,11 @@ def check_login():
         last_access_time = last_access_time.replace(tzinfo=timezone.utc)
         if last_access_time + timedelta(minutes=15) < datetime.now(timezone.utc):
             print('must login2')
+            session.pop('user_id', None)
+            session.pop('last_access_time', None)
             return redirect(url_for('login'))
+        else:
+            session['last_access_time'] = datetime.now()
 
 # home
 @app.route("/",methods=["GET"])
