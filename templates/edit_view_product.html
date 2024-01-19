@@ -104,7 +104,7 @@
                                     <td rowspan="{{ product.prices|length }}">
                                         {{ product.name }} <br>
                                         <a href="/edit_product/{{product['_id']}}" class="add">Edit</a>or
-                                        <a href="/edit_product/{{product['_id']}}" class="add">Delete</a>
+                                        <a href="/delete_product/{{product['_id']}}" class="add">Delete</a>
                                     </td>
                                     <td rowspan="{{ product.prices|length }}">{{ product.currentStock }}</td>
                                 {% endif %}
