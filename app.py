@@ -1115,21 +1115,23 @@ def print_po(poID):
 
 @app.route('/login', methods=["GET","POST"])
 def login():
+    ifWrong = False
     if 'user_id' in session:
         # print('test')
         return redirect('/')
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-        user_details = dict(MClient['Users'].find_one({'username':username, 'password':password}))
+        user_details = list(MClient['Users'].find({'username':username, 'password':password}))
         # Simulate user authentication (replace with your actual authentication logic)
         if user_details:
-            session['user_id'] = user_details['username']
+            session['user_id'] = user_details[0]['username']
             session['last_access_time'] = datetime.now()
             print('successful login')
             return redirect('/')
+        ifWrong = True
 
-    return render_template('login.html')
+    return render_template('login.html',ifWrong = ifWrong)
 
 @app.route('/logout')
 def logout():
