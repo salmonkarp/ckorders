@@ -1,4 +1,14 @@
-{% extends 'base.html' %}
+{% if user_type == 'orderAdmin' %}
+{% extends 'base_order.html' %}
+{% elif user_type == 'invoiceAdmin'%}
+{% extends 'base_invoice.html' %}
+{% elif user_type == 'orderUser' %}
+{% extends 'base_order_user.html' %}
+{% elif user_type == 'invoiceUser'%}
+{% extends 'base_invoice_user.html' %}
+{% else %}
+{% extends 'base_admin.html' %}
+{% endif %}
 
 {% block title %}Create PO{% endblock %}
 
@@ -56,6 +66,8 @@
 
         ul#product-list, ul#hampers-list{
             background-color: white;
+            height: 200px; /* Adjust the height as needed */
+            overflow-y: auto; /* Enable vertical scrolling */
         }
     </style>
 </head>
@@ -74,10 +86,16 @@
 
             <!-- New Customer Option -->
             <div class="additional-options" id="new-options">
-                <label for="customer_name">Customer Name:</label>
-                <input type="text" name="customer_name"> <br>
-                <label for="address">Delivery Address:</label>
-                <input type="text" name="address">
+                <table style="width:100%">
+                    <tr>
+                        <td>Customer Name</td>
+                        <td><input type="text" name="customer_name"></td>
+                    </tr>
+                    <tr>
+                        <td>Delivery Address</td>
+                        <td><input type="text" name="address"></td>
+                    </tr>
+                </table>
             </div>
 
             <!-- Existing Customer Option -->
@@ -98,8 +116,13 @@
             <br>
 
             <!-- Input of products -->
-            <p>Select products:</p>
-            <ul id="product-list" style="list-style-type: none; padding: 0;">
+            <p>
+                Select products:  
+                <input type="text" class="search-bar" id="product-search" placeholder="Search Products..."> <br>
+                <label for="product-checkbox" class="filter-checkbox">Show Checked Only</label>
+                <input type="checkbox" id="product-checkbox">
+            </p>
+            <ul id="product-list">
                 {% for product in productsList %}
                     <li class="product-option">
                         <input type="checkbox" name="products[]" value="{{ product._id }}" class="checkboxClass" onchange="toggleDiv(this)">
@@ -143,8 +166,12 @@
             </ul>
 
             <!-- Input of hampers -->
-            <p>Select hampers:</p>
-            <ul id="hampers-list" style="list-style-type: none; padding: 0;">
+            <p>
+                Select hampers:  <input type="text" class="search-bar" id="hamper-search" placeholder="Search Hampers..."> <br>
+                <label for="hamper-checkbox" class="filter-checkbox">Show Checked Only</label>
+                <input type="checkbox" id="hamper-checkbox">
+            </p>
+            <ul id="hampers-list">
                 {% for hamper in hampersList %}
                     <li class="product-option">
                         <input type="checkbox" name="hampers[]" value="{{ hamper._id }}" class="checkboxClass" onchange="toggleDiv(this)">
@@ -229,6 +256,39 @@
             customPriceInput.style.display = 'none';
         }
     }
+
+    // Function to handle filtering based on search input and checkbox
+    function filterList(searchBarId, listId, checkboxId) {
+        var searchBar = document.getElementById(searchBarId);
+        var checkbox = document.getElementById(checkboxId);
+
+        searchBar.addEventListener('input', updateFilter);
+        checkbox.addEventListener('change', updateFilter);
+
+        function updateFilter() {
+            var filter = searchBar.value.toLowerCase();
+            var showCheckedOnly = checkbox.checked;
+
+            // Filter and show/hide list items based on search and checkbox
+            var listItems = document.querySelectorAll('#' + listId + ' li.product-option');
+            listItems.forEach(function (item) {
+                var text = item.textContent.toLowerCase();
+                var isChecked = item.querySelector('input[type="checkbox"]').checked;
+
+                if (text.includes(filter) && (!showCheckedOnly || isChecked)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+    }
+
+    // Apply filtering for products
+    filterList('product-search', 'product-list', 'product-checkbox');
+
+    // Apply filtering for hampers
+    filterList('hamper-search', 'hampers-list', 'hamper-checkbox');
 </script>
 
 {% endblock %}

@@ -1,4 +1,14 @@
-{% extends 'base.html' %}
+{% if user_type == 'orderAdmin' %}
+{% extends 'base_order.html' %}
+{% elif user_type == 'invoiceAdmin'%}
+{% extends 'base_invoice.html' %}
+{% elif user_type == 'orderUser' %}
+{% extends 'base_order_user.html' %}
+{% elif user_type == 'invoiceUser'%}
+{% extends 'base_invoice_user.html' %}
+{% else %}
+{% extends 'base_admin.html' %}
+{% endif %}
 
 {% block title %}View Products{% endblock %}
 

@@ -1,4 +1,14 @@
-{% extends 'base.html' %}
+{% if user_type == 'orderAdmin' %}
+{% extends 'base_order.html' %}
+{% elif user_type == 'invoiceAdmin'%}
+{% extends 'base_invoice.html' %}
+{% elif user_type == 'orderUser' %}
+{% extends 'base_order_user.html' %}
+{% elif user_type == 'invoiceUser'%}
+{% extends 'base_invoice_user.html' %}
+{% else %}
+{% extends 'base_admin.html' %}
+{% endif %}
 
 {% block title %}View Hampers{% endblock %}
 
@@ -122,13 +132,32 @@
             border-radius: 8px;
         }
 
-        
+        .pagination-controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .pagination-controls a {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 0 5px;
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .pagination-controls a:hover {
+            background-color: #038f5c;
+        }
     </style>
 </head>
 <body>
     <div class="center_form">
         <!-- Table for hampers -->
-        <h2>Hampers</h2>
+        <h2>Hampers   <a href="/add_hampers"class="back">Add Hampers</a></h2>
+        <p>Page {{page}} of {{total_pages}}</p>
         <div class="additional-options" id="hampers-options">
             
             {% for hamper in hampersList %}
@@ -175,7 +204,15 @@
                 </div>
             {% endfor %}
         </div>
-        <a href="/add_hampers"class="back">Add Hampers</a>
+        <div class="pagination-controls">
+            {% if page > 1 %}
+                <a href="/edit_hamper?page={{page-1}}">Previous</a>
+            {% endif %}
+        
+            {% if hampersList | length == 3 %}
+                <a href="/edit_hamper?page={{page+1}}">Next</a>
+            {% endif %}
+        </div>
         <a href="/modify" class="back">Back</a>
     </div>
 

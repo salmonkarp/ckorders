@@ -182,7 +182,7 @@
 </head>
 <body>  
     <!-- Date selection -->
-    <form action="/viewPOs" method="POST" class="top">
+    <form action="/viewPosted" method="POST" class="top">
         <p>
             Page {{page}} of {{total_pages}} <br>
             {% if target_dates != [] %}
@@ -230,10 +230,10 @@
             <tr>
                 <td>{{item['product_name']}}</td>
                 {% if item['discount'] == 0 %}
-                <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
+                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}} (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -257,10 +257,10 @@
             <tr>
                 <td>{{item['hamper_name']}}</td>
                 {% if item['discount'] == 0 %}
-                <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
+                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}}  (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -304,18 +304,12 @@
                 {% endif %}
             </tfoot>
         </table>
-        <div style="text-align: right;">
-            <span style="float: left;">&nbsp;</span> 
-            <a href="edit_po/{{po['_id']}}" class="back">Edit</a>
-            <a href="post_po/{{po['_id']}}" class="back">Post</a>
-            <a href="delete_po/{{po['_id']}}" class="back">Delete</a>
-        </div>
         <p>Order ID: {{po['_id']}}</p>
     </div>
     {% endfor %}
     <div class="pagination-controls">
         {% if page > 1 %}
-            <form action="/viewPOs?page={{page-1}}" method="post" style="display:inline-block">
+            <form action="/viewPosted?page={{page-1}}" method="post" style="display:inline-block">
                 <input type="datetime" value="{{target_dates[0]}}"  name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Previous</button>
@@ -323,7 +317,7 @@
         {% endif %}
     
         {% if data | length == 3 and total_pages > 1 %}
-            <form action="/viewPOs?page={{page+1}}" method="post" style="display:inline-block">
+            <form action="/viewPosted?page={{page+1}}" method="post" style="display:inline-block">
                 <input type="datetime" value="{{target_dates[0]}}" name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Next</button>

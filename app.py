@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, session, url_for, flash, get_flashed_messages
 from openpyxl import load_workbook
 from dotenv import load_dotenv
 from flask_cors import CORS
@@ -14,15 +14,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle, Paragraph
-from bson import json_util
-
-
+import math
 import os
-
-#own libraries
-# import win32com.client
-# import time
-# import pythoncom
 
 # Load environment variables from .env file
 load_dotenv()
@@ -36,7 +29,9 @@ def format_currency(amount, currency='IDR'):  # Default currency is Indonesian R
     formatted_amount = fcrr(amount, currency, locale='id_ID.UTF-8')
     return formatted_amount
 def filter_orders_by_dates(orders, target_dates):
-    return [order for order in orders if order['deliveryDate'] in target_dates]
+    startDate = datetime.strptime(target_dates[0],'%Y-%m-%d')
+    endDate = datetime.strptime(target_dates[1],'%Y-%m-%d')
+    return [order for order in orders if datetime.strptime(order['deliveryDate'],'%Y-%m-%d') >= startDate and datetime.strptime(order['deliveryDate'],'%Y-%m-%d') <= endDate]
 def calculate_order_total(po):
     order_total = 0.0
     for product in po['products'] + po['hampers']:
@@ -79,147 +74,87 @@ def encode_pdf_as_base64(file_path):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = os.environ["SECRETKEY"]
+app.secret_key = "bobby"
 
+os.environ['MONGOKEY'] = "8EGuh1hHtHosYg5U"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 MClient = pymongo.MongoClient(MCString)['CK']
 app.jinja_env.filters['format_currency'] = format_currency
 locale = Locale.parse('id_ID')
 CORS(app)  # Enable CORS for all routes and origins
-TEMPLATE_PATH = 'order.xlsx'
 
 # Configure FLASK_DEBUG from environment variable
 app.config['DEBUG'] = os.environ.get('FLASK_DEBUG')
 
-# Custom decorator to check the last access time
-def requires_login_if_inactive(minutes=5):
+
+# Custom decorator for restricting access to certain routes
+def restricted_access(role):
     def decorator(func):
         def wrapper(*args, **kwargs):
-            if 'user_id' in session:
-                last_access_time = session.get('last_access_time', datetime.min)
-                if last_access_time + timedelta(minutes=minutes) < datetime.now():
-                    return func(*args, **kwargs)
-            return redirect(url_for('login'))
+            if 'username' not in session or 'role' not in session or session['role'] not in role:
+                print('You do not have permission to access this page.', 'error')
+                flash('You do not have permission to access this page.', 'error')
+                return redirect(url_for('login'))
+            return func(*args, **kwargs)
+        wrapper.__name__ = f'restricted_{role}_{func.__name__}'  # Unique function name
         return wrapper
     return decorator
 
-@app.before_request
-def check_login():
-    # List of routes that do not require login
-    exempt_routes = ['login', 'static']
-    print(request.endpoint)
-    if request.endpoint and request.endpoint not in exempt_routes:
-        print(session)
-        if 'user_id' not in session or 'last_access_time' not in session:
-            # print('must login')
-            return redirect(url_for('login'))
-        
-        last_access_time = session['last_access_time']
-        last_access_time = last_access_time.replace(tzinfo=timezone.utc)
-        if last_access_time + timedelta(minutes=15) < datetime.now(timezone.utc):
-            print('must login2')
-            session.pop('user_id', None)
-            session.pop('last_access_time', None)
-            return redirect(url_for('login'))
-        else:
-            session['last_access_time'] = datetime.now()
+# Catch /
+@app.route('/',methods=["GET"])
+def catch_stray():
+    print('test')
+    return redirect('/login')
 
-# home
-@app.route("/",methods=["GET"])
+##########################################################################
+# GROUP: HOME
+# Admin home
+@app.route("/dashboard",methods=["GET"])
+@restricted_access(['admin'])
 def root():
-    return render_template('menu.html')
+    return render_template('menu.html', user_type = session['role'])
 
-# add product get
-@app.route("/add_product",methods=["GET"])
-def add_product():
-    return render_template("add_product.html")
+# Orderuser home
+@app.route("/dashboard_order",methods=["GET"])
+@restricted_access(['orderUser','orderAdmin'])
+def root_order():
+    return render_template("menu.html", user_type = session['role'])
 
+# Invoiceuser home
+@app.route("/dashboard_invoice",methods=["GET"])
+@restricted_access(['invoiceAdmin','invoiceUser'])
+def root_invoice():
+        return render_template("menu.html", user_type = session['role'])
+# ENDGROUP: HOME
+
+##########################################################################
+
+## GROUP: MODIFY DETAILS
 # modify details
 @app.route("/modify",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def modify():
-    return render_template("modify.html")
+    return render_template("modify.html", user_type = session['role'])
 
-# add hampers get
-@app.route("/add_hampers",methods=["GET"])
-def add_hampers():
-    ckProducts = MClient['Products']
-    showIDProjection = {
-        '_id':True,
-        'name':True
-    }
-    productsList = list(ckProducts.find({},showIDProjection))
-    return render_template("add_hampers.html",productsList=productsList)
-
-# add product post
-@app.route("/submit_addition",methods=["POST"])
-def add_product_submit():
-    product_type = request.form.get('product-type')
-    ckProducts = MClient['Products']
-    new_product = {
-        'name': request.form.get('name'),
-        'currentStock': int(request.form['currentStock']),
-        'prices':[]
-    }
-    
-    # Extract price names and values from the form
-    price_names = request.form.getlist('priceName[]')
-    price_values = request.form.getlist('priceValue[]')
-
-    # Create a list of dictionaries for prices
-    for name, value in zip(price_names, price_values):
-        new_product['prices'].append({
-            'name': name,
-            'value': float(value)
-        })
-    ckProducts.insert_one(new_product)
-    return redirect('/edit_product')
-
-# add hampers post
-@app.route("/submit_addition_hampers",methods=["POST"])
-def add_hampers_submit():
-    hamper_name = request.form.get('hname')
-    selected_products = request.form.getlist('products[]')
-    ckHampers = MClient['Hampers']
-    
-    # Extract price names and values from the form
-    price_names = request.form.getlist('priceName[]')
-    price_values = request.form.getlist('priceValue[]')
-    
-    hamper = {
-        'name': hamper_name,
-        'prices': [],
-        'items': []
-    }
-
-    for product_id in selected_products:
-        quantity_key = 'quantities_' + product_id
-        quantity = int(request.form.get(quantity_key, 0))
-        
-        if quantity > 0:
-            hamper['items'].append({
-                'product_id': ObjectId(product_id),
-                'quantity': quantity
-            })
-    for name, value in zip(price_names, price_values):
-        hamper['prices'].append({
-            'name': name,
-            'value': float(value)
-        })
-        
-    # Insert the new hamper into the MongoDB database
-    ckHampers.insert_one(hamper)
-    return redirect('/edit_hamper')
-
-# view object get
+# view product get
 @app.route("/edit_product",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def edit_view_product():
+    page = int(request.args.get('page', 1))
+    start_index = (page - 1) * 10
+    end_index = start_index + 10
     productsList = list(MClient['Products'].find().sort('name',pymongo.ASCENDING))
-    return render_template("edit_view_product.html", productsList = productsList)
+    total_pages = math.ceil(len(productsList) / 10.0)
+    return render_template("edit_view_product.html", productsList = productsList[start_index:end_index], page=page, total_pages = total_pages, user_type = session['role'])
 
-# view object get
+# view hamper get
 @app.route("/edit_hamper",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def edit_view_hamper():
+    page = int(request.args.get('page', 1))
+    start_index = (page - 1) * 3
+    end_index = start_index + 3
     ckHampers = MClient['Hampers']
     pipeline = pipeline = [
         {
@@ -273,19 +208,102 @@ def edit_view_hamper():
     ]
 
     hampersList = list(ckHampers.aggregate(pipeline))
-    return render_template("edit_view_hamper.html", hampersList = hampersList)
+    total_pages = math.ceil(len(hampersList) / 3.0)
+    return render_template("edit_view_hamper.html", hampersList = hampersList[start_index:end_index], page=page, total_pages=total_pages, user_type = session['role'])
+
+# add product get
+@app.route("/add_product",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def add_product():
+    return render_template("add_product.html", user_type = session['role'])
+
+# add hampers get
+@app.route("/add_hampers",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def add_hampers():
+    ckProducts = MClient['Products']
+    showIDProjection = {
+        '_id':True,
+        'name':True
+    }
+    productsList = list(ckProducts.find({},showIDProjection).sort('name',pymongo.ASCENDING))
+    return render_template("add_hampers.html",productsList=productsList, user_type = session['role'])
+
+# add product post
+@app.route("/submit_addition",methods=["POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def add_product_submit():
+    product_type = request.form.get('product-type')
+    ckProducts = MClient['Products']
+    new_product = {
+        'name': request.form.get('name'),
+        'currentStock': int(request.form['currentStock']),
+        'prices':[]
+    }
+    
+    # Extract price names and values from the form
+    price_names = request.form.getlist('priceName[]')
+    price_values = request.form.getlist('priceValue[]')
+
+    # Create a list of dictionaries for prices
+    for name, value in zip(price_names, price_values):
+        new_product['prices'].append({
+            'name': name,
+            'value': float(value)
+        })
+    ckProducts.insert_one(new_product)
+    return redirect('/edit_product')
+
+# add hampers post
+@app.route("/submit_addition_hampers",methods=["POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def add_hampers_submit():
+    hamper_name = request.form.get('hname')
+    selected_products = request.form.getlist('products[]')
+    ckHampers = MClient['Hampers']
+    
+    # Extract price names and values from the form
+    price_names = request.form.getlist('priceName[]')
+    price_values = request.form.getlist('priceValue[]')
+    
+    hamper = {
+        'name': hamper_name,
+        'prices': [],
+        'items': []
+    }
+
+    for product_id in selected_products:
+        quantity_key = 'quantities_' + product_id
+        quantity = int(request.form.get(quantity_key, 0))
+        
+        if quantity > 0:
+            hamper['items'].append({
+                'product_id': ObjectId(product_id),
+                'quantity': quantity
+            })
+    for name, value in zip(price_names, price_values):
+        hamper['prices'].append({
+            'name': name,
+            'value': float(value)
+        })
+        
+    # Insert the new hamper into the MongoDB database
+    ckHampers.insert_one(hamper)
+    return redirect('/edit_hamper')
 
 # edit product get
 @app.route("/edit_product/<productID>",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def edit_product(productID):
     ckConn = MClient['Products']
     itemDetails = ckConn.find_one({
         '_id':ObjectId(productID)
     })
-    return render_template('edit_product.html',product = itemDetails)
+    return render_template('edit_product.html',product = itemDetails, user_type = session['role'])
 
-# handle edit product post
+# edit product post
 @app.route("/edit_product_submit/<productID>", methods=["POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def edit_product_submit(productID):
     ckConn = MClient['Products']
     updated_name = request.form['name']
@@ -308,10 +326,11 @@ def edit_product_submit(productID):
             'prices': prices
         }
     })
-    return redirect('/edit_product')
+    return redirect('/edit_product',)
 
-# handle delete product get
+# delete product get
 @app.route("/delete_product/<productID>",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def delete_product(productID):
     ckConn = MClient['Products']
     ckConn.delete_many({
@@ -321,8 +340,9 @@ def delete_product(productID):
 
 # edit hampers get
 @app.route("/edit_hampers/<hampersID>",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def edit_hampers(hampersID):
-    productsList = list(MClient['Products'].find())
+    productsList = list(MClient['Products'].find().sort('name',pymongo.ASCENDING))
     ckConn = MClient['Hampers']
     itemDetails = ckConn.find_one({
         '_id':ObjectId(hampersID)
@@ -335,9 +355,11 @@ def edit_hampers(hampersID):
         QuantDict[ObjectId(tempItemID)] = item2['quantity']
         print('added',item2['quantity'])
     print(QuantDict)
-    return render_template('edit_hampers.html',hamper = itemDetails, productsList = productsList, QuantDict = QuantDict)
+    return render_template('edit_hampers.html',hamper = itemDetails, productsList = productsList, QuantDict = QuantDict, user_type = session['role'])
 
+# edit hampers post
 @app.route("/edit_hampers_submit/<hampersID>",methods=["POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def edit_hampers_submit(hampersID):
     ckHampers = MClient['Hampers']
     hamper_name = request.form.get('hname')
@@ -371,7 +393,9 @@ def edit_hampers_submit(hampersID):
     })
     return redirect('/edit_hamper')
 
+# delete hampers post
 @app.route("/delete_hampers/<hampersID>",methods=["GET"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def delete_hampers(hampersID):
     ckHampers = MClient['Hampers']
     ckHampers.delete_many({
@@ -379,16 +403,54 @@ def delete_hampers(hampersID):
     })
     return redirect('/edit_hamper')
 
+@app.route('/edit_view_customer',methods=['GET'])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def edit_view_customer():
+    customers_data = list(MClient['Customers'].find())
+    return render_template('edit_view_customer.html',data = customers_data, user_type = session['role'])
+
+@app.route('/edit_customer/<custID>',methods=['GET'])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def edit_customer(custID):
+    customer_data = dict(MClient['Customers'].find_one({'_id':ObjectId(custID)}))
+    return render_template('edit_customer.html',data = customer_data, user_type = session['role'])
+
+@app.route('/edit_customer_submit/<custID>',methods=['POST'])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def edit_customer_submit(custID):
+    name = request.form.get('name')
+    address = request.form.get('address')
+    MClient['Customers'].update_many({'_id':ObjectId(custID)},{
+        '$set':{
+            'name':name,
+            'address':address
+        }
+    })
+    return redirect('/edit_view_customer')
+
+@app.route('/delete_customer/<custID>',methods=["GET","POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def delete_customer(custID):
+    MClient['Customers'].delete_many({'_id':ObjectId(custID)})
+    return redirect('/edit_view_customer')
+
+#ENDGROUP: MODIFY DETAILS
+
+##########################################################################
+
+#GROUP: PO
 @app.route("/createPO",methods=['GET'])
+@restricted_access(['admin','orderUser','orderAdmin'])
 def createPO():
     customersList = list(MClient['Customers'].find())
     productsList = list(MClient['Products'].find()) 
     hampersList = list(MClient['Hampers'].find())
     current_date = datetime.now().strftime("%Y-%m-%d")
     # pnhList = products and hampers List
-    return render_template('create_po.html',customersList = customersList, productsList = productsList, hampersList = hampersList, current_date = current_date)
+    return render_template('create_po.html',customersList = customersList, productsList = productsList, hampersList = hampersList, current_date = current_date, user_type = session['role'])
 
 @app.route("/createPOSubmit",methods=["POST"])
+@restricted_access(['admin','orderUser','orderAdmin'])
 def createPOSubmit():   
     #handling customers
     existingCustomerID = request.form.get('existing_customer_id')
@@ -478,16 +540,17 @@ def createPOSubmit():
     ckPOs.insert_one(OrderObject)
 
     print(OrderObject)
-    return redirect('/')
+    return redirect('/viewPOs')
 
 @app.route("/viewPOs",methods=["GET","POST"])
+@restricted_access(['admin','orderUser','orderAdmin'])
 def lookup():
     page = int(request.args.get('page', 1))
     start_index = (page - 1) * 3
     end_index = start_index + 3
     
     orders_collection = MClient['POs']
-    products_collection = MClient['Products']  # Assuming this is the correct name for the Products collection
+    products_collection = MClient['Products']
     hampers_collection = MClient['Hampers']
     customers_collection = MClient['Customers']
     
@@ -543,6 +606,7 @@ def lookup():
     result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
     
     # for specific date handling
+    target_dates = []
     if request.method=='POST':
         if request.form.get('specificDate'):
             target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
@@ -556,9 +620,12 @@ def lookup():
         filtered_orders = result_sorted
     
     # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
-    return render_template('lookup.html',data = filtered_orders[start_index:end_index], page=page)
+    print(len(filtered_orders))
+    total_pages = math.ceil(len(filtered_orders) / 3.0)
+    return render_template('lookup.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates)
 
 @app.route("/edit_po/<poID>",methods=["GET"])
+@restricted_access(['admin','orderUser','orderAdmin'])
 def edit_po(poID):
     order_data = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
     products_data = list(MClient['Products'].find())
@@ -605,9 +672,10 @@ def edit_po(poID):
                 hamper['custom_price_in_order'] = next((price['value'] for price in hamper['prices'] if price_type == price['name']), None)
                 print(hamper['custom_price_in_order'])
 
-    return render_template("edit_po.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_data = customer_data, customersList = customersList)
+    return render_template("edit_po.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_data = customer_data, customersList = customersList, user_type = session['role'])
 
 @app.route("/edit_po_submit",methods=["POST"])
+@restricted_access(['admin','orderUser','orderAdmin'])
 def edit_po_submit():
     orderID = request.form.get('orderID')
     
@@ -666,6 +734,8 @@ def edit_po_submit():
                 'quantity': quantity,
                 'price_type': price_type
             }
+        else:
+            continue
         
         if price_type=='custom':
             custom_price_key = product_id + "_custom_price"
@@ -691,6 +761,8 @@ def edit_po_submit():
             'quantity': quantity,
             'price_type': price_type
         }
+        else:
+            continue
             
         if price_type == 'custom':
             custom_price_key = product_id + "_custom_price"
@@ -715,13 +787,142 @@ def edit_po_submit():
     return redirect('/viewPOs')
 
 @app.route("/delete_po/<poID>",methods=["GET"])
+@restricted_access(['admin','orderUser','orderAdmin'])
 def delete_po(poID):
     MClient['POs'].delete_many({
         '_id':ObjectId(poID)
     })
     return redirect('/viewPOs')
 
+@app.route('/post_po/<poID>',methods=["GET","POST"])
+@restricted_access(['admin','orderUser','orderAdmin'])
+def post_po(poID):
+    if request.method == 'GET':
+        return render_template('post_po_confirm.html',poID = poID, user_type = session['role'])
+    else:
+        order = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
+        customers_collection = MClient['Customers']
+        products_collection = MClient['Products']
+        hampers_collection = MClient['Hampers']
+        
+        customer = customers_collection.find_one({'_id': order['custID']})
+        products_data = []
+
+        for product in order.get('products', []):
+            product_doc = products_collection.find_one({'_id': product['product_id']})
+            price_type = product.get('price_type', 'custom')
+            price_value = product['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+            )
+            discount = product.get('discount', 0.0)
+            quantity = product.get('quantity')
+            currentStock = product_doc.get('currentStock',0)
+            
+            append_object = {
+                '_id': product['product_id'],
+                'product_name': product_doc['name'],
+                'quantity': quantity,
+                'price_type':price_type,
+                'price_value':price_value,
+            }
+            if discount > 0.0:
+                append_object['discount'] = discount
+            else:
+                append_object['discount'] = 0.0
+            
+            products_collection.update_one({'_id': product['product_id']}, {
+                '$set':{
+                    'currentStock':currentStock - quantity
+                }
+            })
+            products_data.append(append_object)
+
+        hampers_data = []
+
+        for hamper in order.get('hampers', []):
+            hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+            price_type = hamper.get('price_type', 'custom')
+            price_value = hamper['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+            )
+            discount = hamper.get('discount', 0.0)
+            quantity = hamper.get('quantity')
+            append_object = {
+                '_id': hamper['product_id'],
+                'hamper_name': hamper_doc['name'],
+                'quantity': hamper.get('quantity'),
+                'price_type':price_type,
+                'price_value':price_value,
+            }
+            if discount > 0.0:
+                append_object['discount'] = discount
+            else:
+                append_object['discount'] = 0.0
+            
+            for product in hamper_doc['items']:
+                print(product)
+                product_doc = products_collection.find_one({'_id': product['product_id']})
+                currentStock = product_doc.get('currentStock',0)
+                products_collection.update_one({'_id': product['product_id']}, {
+                    '$set':{
+                        'currentStock':currentStock - (quantity * product['quantity'])
+                    }
+                })
+            hampers_data.append(append_object)
+        
+        archived_object = {
+            '_id': ObjectId(poID),
+            'custID':customer['_id'],
+            'customer_name': customer['name'],
+            'customer_address': customer['address'],
+            'deliveryDate': order['deliveryDate'],
+            'products': products_data,
+            'hampers': hampers_data,
+            'orderDiscount': order.get('orderDiscount', 0.0)
+        }
+        
+        MClient['PostedPOs'].insert_one(archived_object)
+        MClient['POs'].delete_many({'_id':ObjectId(poID)})
+        return redirect('/viewPosted')
+
+@app.route("/viewPosted",methods=["GET","POST"])
+@restricted_access(['admin','orderUser','orderAdmin','invoiceUser','invoiceAdmin'])
+def lookup_posted():
+    page = int(request.args.get('page', 1))
+    start_index = (page - 1) * 3
+    end_index = start_index + 3
+    
+    result = list(MClient['PostedPOs'].find())
+    for order in result:
+        order['order_total'] = calculate_order_total(order)
+    result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
+    
+    # for specific date handling
+    target_dates = []
+    if request.method=='POST':
+        if request.form.get('specificDate'):
+            target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('startDate'):
+            target_dates = [request.form.get('startDate'),request.form.get('endDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        else:
+            filtered_orders = result_sorted
+    else:
+        filtered_orders = result_sorted
+    
+    total_pages = math.ceil(len(filtered_orders)/3.0)
+    # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
+    return render_template('posted_view.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
+
+
+#ENDGROUP
+
+###################################################################
+
+#GROUP: SUMMARY
 @app.route('/summary',methods=["GET","POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def summary():
     if request.method == "GET":
         return render_template('summary.html')
@@ -854,122 +1055,12 @@ def summary():
                 customer[1]['products_quantity'] = dict(sorted(customer[1]['products_quantity'].items(), key=lambda x:x[1], reverse=True))
             return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate)
         
-@app.route('/archive_po/<poID>',methods=["GET","POST"])
-def archive_po(poID):
-    if request.method == 'GET':
-        return render_template('archive_po_confirm.html',poID = poID)
-    else:
-        order = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
-        customers_collection = MClient['Customers']
-        products_collection = MClient['Products']
-        hampers_collection = MClient['Hampers']
-        
-        customer = customers_collection.find_one({'_id': order['custID']})
-        products_data = []
-
-        for product in order.get('products', []):
-            product_doc = products_collection.find_one({'_id': product['product_id']})
-            price_type = product.get('price_type', 'custom')
-            price_value = product['custom_price'] if price_type == 'custom' else next(
-                (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
-            )
-            discount = product.get('discount', 0.0)
-            quantity = product.get('quantity')
-            currentStock = product_doc.get('currentStock',0)
-            
-            append_object = {
-                '_id': product['product_id'],
-                'product_name': product_doc['name'],
-                'quantity': quantity,
-                'price_type':price_type,
-                'price_value':price_value,
-            }
-            if discount > 0.0:
-                append_object['discount'] = discount
-            
-            products_collection.update_one({'_id': product['product_id']}, {
-                '$set':{
-                    'currentStock':currentStock - quantity
-                }
-            })
-            products_data.append(append_object)
-
-        hampers_data = []
-
-        for hamper in order.get('hampers', []):
-            hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
-            price_type = hamper.get('price_type', 'custom')
-            price_value = hamper['custom_price'] if price_type == 'custom' else next(
-                (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
-            )
-            discount = hamper.get('discount', 0.0)
-            quantity = hamper.get('quantity')
-            append_object = {
-                '_id': hamper['product_id'],
-                'hamper_name': hamper_doc['name'],
-                'quantity': hamper.get('quantity'),
-                'price_type':price_type,
-                'price_value':price_value,
-            }
-            if discount > 0.0:
-                append_object['discount'] = discount
-            
-            for product in hamper_doc['items']:
-                product_doc = products_collection.find_one({'_id': product['product_id']})
-                currentStock = product_doc.get('currentStock',0)
-                products_collection.update_one({'_id': product['product_id']}, {
-                    '$set':{
-                        'currentStock':currentStock - (quantity * product['quantity'])
-                    }
-                })
-            hampers_data.append(append_object)
-        
-        archived_object = {
-            '_id': ObjectId(poID),
-            'custID':customer['_id'],
-            'customer_name': customer['name'],
-            'customer_address': customer['address'],
-            'deliveryDate': order['deliveryDate'],
-            'products': products_data,
-            'hampers': hampers_data,
-            'orderDiscount': order.get('orderDiscount', 0.0)
-        }
-        
-        MClient['ArchivedPOs'].insert_one(archived_object)
-        MClient['POs'].delete_many({'_id':ObjectId(poID)})
-        return redirect('/viewPOs')
-
-@app.route('/edit_view_customer',methods=['GET'])
-def edit_view_customer():
-    customers_data = list(MClient['Customers'].find())
-    return render_template('edit_view_customer.html',data = customers_data)
-
-@app.route('/edit_customer/<custID>',methods=['GET'])
-def edit_customer(custID):
-    customer_data = dict(MClient['Customers'].find_one({'_id':ObjectId(custID)}))
-    return render_template('edit_customer.html',data = customer_data)
-
-@app.route('/edit_customer_submit/<custID>',methods=['POST'])
-def edit_customer_submit(custID):
-    name = request.form.get('name')
-    address = request.form.get('address')
-    MClient['Customers'].update_many({'_id':ObjectId(custID)},{
-        '$set':{
-            'name':name,
-            'address':address
-        }
-    })
-    return redirect('/edit_view_customer')
-
-@app.route('/delete_customer/<custID>',methods=["GET","POST"])
-def delete_customer(custID):
-    MClient['Customers'].delete_many({'_id':ObjectId(custID)})
-    return redirect('/edit_view_customer')
     
-@app.route('/print_po/<poID>',methods=['GET'])
-def print_po(poID):
-    output_path = f"excel_results/output_{poID}.xlsx"
-    order = dict(MClient['POs'].find_one({'_id':ObjectId(poID)}))
+@app.route('/print_invoice/<invoiceID>',methods=['GET'])
+@restricted_access(['admin','invoiceAdmin','invoiceUser'])
+def print_po(invoiceID):
+    output_path = f"excel_results/output_{invoiceID}.xlsx"
+    order = dict(MClient['Invoices'].find_one({'_id':ObjectId(invoiceID)}))
     products_collection = MClient['Products']  # Assuming this is the correct name for the Products collection
     hampers_collection = MClient['Hampers']
     customers_collection = MClient['Customers']
@@ -1117,30 +1208,49 @@ def print_po(poID):
     encoded_pdf_content = encode_pdf_as_base64(output_pdf_path)
     return render_template('print_po.html',encoded_content = encoded_pdf_content)
 
-@app.route('/login', methods=["GET","POST"])
-def login():
-    ifWrong = False
-    if 'user_id' in session:
-        # print('test')
-        return redirect('/')
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        user_details = list(MClient['Users'].find({'username':username, 'password':password}))
-        # Simulate user authentication (replace with your actual authentication logic)
-        if user_details:
-            session['user_id'] = user_details[0]['username']
-            session['last_access_time'] = datetime.now()
-            print('successful login')
-            return redirect('/')
-        ifWrong = True
 
-    return render_template('login.html',ifWrong = ifWrong)
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        # Initialize user data
+        users_collection = list(MClient['Users'].find())
+        users = {}
+        for user in users_collection:
+            users[user['username']] = {'password':user['password'], 'role':user['role']}
+        print(users)
+        
+        username = request.form['username']
+        password = request.form['password']
+
+        user = next((user for user in users if user == username and users[user]['password'] == password), None)
+
+        if user:
+            session['username'] = user
+            session['role'] = users[user]['role']
+            session.permanent = True
+            app.permanent_session_lifetime = timedelta(minutes=15)
+            flash('Login successful', 'success')
+            if session['role'] in ['invoiceUser','invoiceAdmin']:
+                return redirect('/dashboard_invoice')
+            elif session['role'] in ['orderAdmin','orderUser']:
+                return redirect('/dashboard_order')
+            else:
+                return redirect('/dashboard')
+
+        flash('Invalid username or password', 'error')
+    
+    
+    message = get_flashed_messages()
+    print(type(message))
+    if message:
+        message = message[-1]
+    return render_template('login.html',message = message)
 
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
     session.pop('last_access_time', None)
+    print(session)
     return render_template('logout.html')
     
     

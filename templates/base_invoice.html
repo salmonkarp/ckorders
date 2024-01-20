@@ -1,0 +1,33 @@
+<!-- base.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CK{% endblock %}</title>
+    <!-- Add your common CSS styles and links here -->
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+<header>
+    <nav>
+        <ul>
+            <li class="{% if request.path == '/dashboard_invoice' %}active{% endif %}"><a href="/dashboard_invoice">Home</a></li>
+            <li class="{% if request.path == '/createInvoice' %}active{% endif %}"><a href="/createInvoice">Create Invoice</a></li>
+            <li class="{% if request.path == '/viewInvoices' %}active{% endif %}"><a href="/viewInvoices">View Invoices</a></li>
+            <li class="{% if request.path == '/modify' %}active{% endif %}"><a href="/modify">Modify Details</a></li>
+            <li class="{% if request.path == '/viewArchived' %}active{% endif %}"><a href="/viewArchived">View Archived</a></li>
+            <li><a href="/logout">Logout</a></li>
+            <!-- Add more navigation items as needed -->
+        </ul>
+    </nav>
+</header>
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>
