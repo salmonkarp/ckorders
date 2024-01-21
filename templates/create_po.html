@@ -69,6 +69,18 @@
             height: 200px; /* Adjust the height as needed */
             overflow-y: auto; /* Enable vertical scrolling */
         }
+        @media only screen and (max-width: 768px) {
+            body, a.back, input, input[type="submit"], button, select {
+                font-size:2vw;
+            }
+            /* Adjust styles for smaller screens */
+            .center_form, .main-hamper-container, .hamper-detail-container,
+            .order-container, .top, .pagination-controls form button {
+                width: 80%;
+            }
+
+            /* Add more responsive styles as needed */
+        }
     </style>
 </head>
 <body>
@@ -214,7 +226,7 @@
                 {% endfor %}
             </ul>
             <label> Order Discount (in %) </label>
-            <input type="number" value="0" name="order-discount">
+            <input type="number" value="0" name="order-discount"> <br>
             <input type="submit" value="Create PO">
         </div>
     </form>

@@ -74,9 +74,9 @@ def encode_pdf_as_base64(file_path):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = os.environ["SECRETKEY"]
+app.secret_key = "bobby"
 
-
+os.environ["MONGOKEY"] = "8EGuh1hHtHosYg5U"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 MClient = pymongo.MongoClient(MCString)['CK']
@@ -1229,7 +1229,6 @@ def login():
             session['role'] = users[user]['role']
             session.permanent = True
             app.permanent_session_lifetime = timedelta(minutes=15)
-            flash('Login successful', 'success')
             if session['role'] in ['invoiceUser','invoiceAdmin']:
                 return redirect('/dashboard_invoice')
             elif session['role'] in ['orderAdmin','orderUser']:

@@ -65,6 +65,18 @@
         a.back:hover{
             background-color: #04AA6D;
         }
+        @media only screen and (max-width: 768px) {
+            body, a.back, input, input[type="submit"], button, select {
+                font-size:2vw;
+            }
+            /* Adjust styles for smaller screens */
+            .center_form, .main-hamper-container, .hamper-detail-container,
+            .order-container, .top, .pagination-controls form button {
+                width: 80%;
+            }
+
+            /* Add more responsive styles as needed */
+        }
     </style>
 </head>
 <body>
@@ -72,7 +84,7 @@
         <h3>Are you sure?</h3>
         <p>You won't be able to modify ANY of the details in the order once it is archived.</p>
         <button type="submit" class="back">Submit</button>
-        <button href="/viewPOs">Cancel</button>
+        <button type="button" onclick="window.location.href='/viewPOs'">Cancel</button>
     </div>
 </body>
 <script>

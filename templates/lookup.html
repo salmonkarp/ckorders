@@ -17,6 +17,7 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
+            font-size:1em;
             background-color: #f4f4f4;
             margin: 0;
             padding: 0;
@@ -177,6 +178,19 @@
             padding: 20px; /* Updated padding */
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        @media only screen and (max-width: 768px) {
+            body, a.back, input, button, select {
+                font-size:2vw;
+            }
+            /* Adjust styles for smaller screens */
+            .center_form, .main-hamper-container, .hamper-detail-container,
+            .order-container, .top, .pagination-controls form button {
+                width: 80%;
+            }
+
+            /* Add more responsive styles as needed */
         }
     </style>
 </head>
