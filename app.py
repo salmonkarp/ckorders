@@ -1487,7 +1487,7 @@ def view_archived():
     
     total_pages = math.ceil(len(filtered_orders)/3.0)
     # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
-    return render_template('posted_view.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
+    return render_template('archived_view_invoice.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
 
 
 @app.route('/print_invoice/<invoiceID>',methods=['GET'])

@@ -1,0 +1,360 @@
+{% if user_type == 'orderAdmin' %}
+{% extends 'base_order.html' %}
+{% elif user_type == 'invoiceAdmin'%}
+{% extends 'base_invoice.html' %}
+{% elif user_type == 'orderUser' %}
+{% extends 'base_order_user.html' %}
+{% elif user_type == 'invoiceUser'%}
+{% extends 'base_invoice_user.html' %}
+{% else %}
+{% extends 'base_admin.html' %}
+{% endif %}
+
+{% block title %}View Invoices{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .center_form {
+            width: 60%;
+            margin: auto;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .main-hamper-container {
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+
+        .hamper-detail-container {
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #04AA6D;
+            color: #fff;
+        }
+
+        a.add {
+            color: #04AA6D;
+            text-decoration: none;
+            margin-right: 10px;
+        }
+
+        a.add:hover {
+            text-decoration: underline;
+        }
+
+        label {
+            margin-right: 20px;
+        }
+
+        .additional-options table {
+            margin-top: 10px;
+        }
+
+        a.back{
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        a.back:hover{
+            background-color: #04AA6D;
+        }
+        .hamperTablesContainer {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .hamperTable {
+            flex: 1;
+            margin-right: 20px; /* Adjust margin as needed */
+            margin-bottom: 20px;
+        }
+
+        /* Additional styles from the first code */
+        form .bottom{
+            width: 60%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #ffffff; /* Updated background color */
+            padding: 20px; /* Updated padding */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        table, tr, td, th {
+            border: solid 1px #ddd;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .order-container {
+            width: 60%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #ffffff; /* Updated background color */
+            padding: 20px; /* Updated padding */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        a.back{
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        a.back:hover{
+            background-color: #038f5c;
+        }
+        
+        .pagination-controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .pagination-controls form button {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 0 5px;
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+            border:none;
+        }
+
+        .pagination-controls form button:hover {
+            background-color: #038f5c;
+        }
+
+        .top{
+            width: 60%;
+            margin: auto;
+            margin-top: 20px;
+            background-color: #ffffff; /* Updated background color */
+            padding: 20px; /* Updated padding */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        @media only screen and (max-width: 768px) {
+            body, a.back, input, input[type="submit"], button, select {
+                font-size:2vw;
+            }
+            /* Adjust styles for smaller screens */
+            .center_form, .main-hamper-container, .hamper-detail-container,
+            .order-container, .top, .pagination-controls form button, .top {
+                width: 80%;
+            }
+
+            /* Add more responsive styles as needed */
+        }
+    </style>
+</head>
+<body>  
+    <!-- Date selection -->
+    <form action="/viewArchived" method="POST" class="top">
+        <h3>Posted Purchase Orders</h3>
+        <p>
+            Page {{page}} of {{total_pages}} <br>
+            {% if target_dates != [] %}
+            Displaying orders from {{target_dates[0]}} to {{target_dates[1]}}
+            {% endif %}
+        </p>
+        <label for="viewType">Select view type:</label>
+        <select id="viewType" name="viewType" required>
+            <option value="" disabled selected>Select an option</option>
+            <option value="specificDate">View from specific date</option>
+            <option value="dateRange">View from date range</option>
+            <option value="allOrders">Display all orders</option>
+        </select>
+
+        <div id="specificDate" style="display: none;">
+            <label for="specificDateInput">Enter specific date:</label>
+            <input type="date" id="specificDateInput" name="specificDate">
+        </div>
+
+        <div id="dateRange" style="display: none;">
+            <label for="startDateInput">Start Date:</label>
+            <input type="date" id="startDateInput" name="startDate">
+            <label for="endDateInput">End Date:</label>
+            <input type="date" id="endDateInput" name="endDate">
+        </div>
+
+        <button type="submit">View Orders</button>
+    </form>
+    
+    <!-- Order Display -->
+    {% for po in data %}
+    <div class="order-container">
+        <p>
+        Customer Name: {{po['customer_name']}} <br>
+        Customer Address: {{po['customer_address']}} <br>
+        Delivery Date: {{po['deliveryDate']}}</p>
+        <table>
+            <tr>
+                <th>Product Name</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Subtotal</th>
+            </tr>
+            {% for item in po['products'] %}
+            <tr>
+                <td>{{item['product_name']}}</td>
+                {% if item['discount'] == 0 %}
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
+                {% else %}
+                <td>
+                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
+                    - {{(item['discount'] * item['price_value'] / 100) | format_currency}} (Discount {{item['discount']}}%)<br>
+                    = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
+                </td>
+                {% endif %}
+                <td>{{item['quantity']}}</td>
+                {% if item['discount'] == 0 %}
+                <td>
+                    {% set subtotal = item['quantity'] * item['price_value'] %}
+                    {{ subtotal | format_currency }}
+                </td>
+                {% else %}
+                <td>
+                    {% set total_discount_cut = (item['discount'] * item['price_value'] / 100) * item['quantity'] %}
+                    {% set subtotal = (item['quantity'] * item['price_value']) - total_discount_cut %}
+                    {{ subtotal | format_currency }}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            {% for item in po['hampers'] %}
+            <tr>
+                <td>{{item['hamper_name']}}</td>
+                {% if item['discount'] == 0 %}
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
+                {% else %}
+                <td>
+                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
+                    - {{(item['discount'] * item['price_value'] / 100) | format_currency}}  (Discount {{item['discount']}}%)<br>
+                    = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
+                </td>
+                {% endif %}
+                <td>{{item['quantity']}}</td>
+                {% if item['discount'] == 0 %}
+                <td>
+                    {% set subtotal = item['quantity'] * item['price_value'] %}
+                    {{ subtotal | format_currency }}
+                </td>
+                {% else %}
+                <td>
+                    {% set total_discount_cut = (item['discount'] * item['price_value'] / 100) * item['quantity'] %}
+                    {% set subtotal = (item['quantity'] * item['price_value']) - total_discount_cut %}
+                    {{ subtotal | format_currency }}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align: right; padding-right:5px">Total: </td>
+                    <td>
+                        {{ po['order_total'] | format_currency }} 
+                    </td>
+                </tr>
+                {% if po['orderDiscount'] > 0 %}
+                <tr>
+                    <td colspan="3" style="text-align: right; padding-right:5px">Order Discount ({{po['orderDiscount']}}%): </td>
+                    <td>
+                        -{{ (po['orderDiscount'] * po['order_total'] * 0.01) | format_currency }} 
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3" style="text-align: right; padding-right:5px">Final Total:</td>
+                    <td>
+                        {{ (po['order_total'] - (po['orderDiscount'] * po['order_total'] * 0.01)) | format_currency }} 
+                    </td>
+                </tr>
+                {% endif %}
+            </tfoot>
+        </table>
+        <p>Order ID: {{po['_id']}}</p>
+    </div>
+    {% endfor %}
+    <div class="pagination-controls">
+        {% if page > 1 %}
+            <form action="/viewArchived?page={{page-1}}" method="post" style="display:inline-block">
+                <input type="datetime" value="{{target_dates[0]}}"  name='startDate' hidden>
+                <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
+                <button type="submit">Previous</button>
+            </form>
+        {% endif %}
+    
+        {% if data | length == 3 and total_pages > 1 %}
+            <form action="/viewArchived?page={{page+1}}" method="post" style="display:inline-block">
+                <input type="datetime" value="{{target_dates[0]}}" name='startDate' hidden>
+                <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
+                <button type="submit">Next</button>
+            </form>
+        {% endif %}
+    </div>
+
+</body>
+<script>
+    document.getElementById('viewType').addEventListener('change', function() {
+        var specificDateDiv = document.getElementById('specificDate');
+        var dateRangeDiv = document.getElementById('dateRange');
+
+        if (this.value === 'specificDate') {
+            specificDateDiv.style.display = 'block';
+            dateRangeDiv.style.display = 'none';
+        } else if (this.value === 'dateRange') {
+            specificDateDiv.style.display = 'none';
+            dateRangeDiv.style.display = 'block';
+        } else {
+            specificDateDiv.style.display = 'none';
+            dateRangeDiv.style.display = 'none';
+        }
+    });
+    
+</script>
+{% endblock %}
