@@ -1,0 +1,92 @@
+<!-- customer_summary.html -->
+
+{% if user_type == 'orderAdmin' %}
+{% extends 'base_order.html' %}
+{% elif user_type == 'invoiceAdmin'%}
+{% extends 'base_invoice.html' %}
+{% elif user_type == 'orderUser' %}
+{% extends 'base_order_user.html' %}
+{% elif user_type == 'invoiceUser'%}
+{% extends 'base_invoice_user.html' %}
+{% else %}
+{% extends 'base_admin.html' %}
+{% endif %}
+
+{% block title %}Archive Invoice{% endblock %}
+
+{% block content %}
+<head>
+    <style>
+        table,tr,td,th{
+            border: solid 1px black;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+        }
+        .active {
+            background-color: #04AA6D;
+        }
+        .additional-options{
+            display:none;
+        }
+        .order-container{
+            width: 50%;
+            margin: auto;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        a.back{
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        a.back:hover{
+            background-color: #04AA6D;
+        }
+        @media only screen and (max-width: 768px) {
+            body, a.back, input, input[type="submit"], button, select {
+                font-size:2vw;
+            }
+            /* Adjust styles for smaller screens */
+            .center_form, .main-hamper-container, .hamper-detail-container,
+            .order-container, .top, .pagination-controls form button {
+                width: 80%;
+            }
+
+            /* Add more responsive styles as needed */
+        }
+    </style>
+</head>
+<body>
+    <form class="order-container" enctype="multipart/form-data" action="/archive_invoice/{{poID}}" method="post">
+        <h3>Are you sure?</h3>
+        <p>You won't be able to modify ANY of the details in the invoice once it is archived.</p>
+        <button type="submit" class="back">Submit</button>
+        <button type="button" onclick="window.location.href='/viewPOs'">Cancel</button>
+    </div>
+</body>
+<script>
+</script>
+{% endblock %}

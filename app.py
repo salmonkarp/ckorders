@@ -16,6 +16,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle, Paragraph
 import math
 import os
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -46,37 +47,29 @@ def encode_pdf_as_base64(file_path):
         pdf_content = pdf_file.read()
         encoded_content = base64.b64encode(pdf_content).decode('utf-8')
         return encoded_content
-# def excel_to_pdf(input_excel, output_pdf):
-#     try:
-#         pythoncom.CoInitialize()
-#         excel = win32com.client.Dispatch("Excel.Application")
-#         excel.Visible = False
+def send_whatsapp_message(po):
+    message = "New Order!\n"
+    message += "\n"
+    message += "Customer Name: " + po['customer_name'] + '\n'
+    message += "Customer Address: " + po['customer_address']  + '\n'
+    message += "Delivery Date: " + po['deliveryDate'] + '\n'
+    message += "\n"
+    for item in po['products']:
+        message += str(item['quantity']) + ' x ' + str(item['product_name']) + '\n'
+    for item in po['hampers']:
+        message += str(item['quantity']) + ' x ' + str(item['hamper_name']) + '\n'
+    
+    TELEGRAM_API_KEY = os.environ['TELEGRAM_API_KEY']
+    base_url = f"https://api.telegram.org/bot{TELEGRAM_API_KEY}/sendMessage?chat_id=-4148902006&text={message}"
+    requests.get(base_url)
+    return
+    
 
-#         # Open the Excel file
-#         wb = excel.Workbooks.Open(os.path.abspath(input_excel))
-
-#         # Save as PDF
-#         wb.ExportAsFixedFormat(0, os.path.abspath(output_pdf), Quality=1)
-
-#         # Close the workbook
-#         wb.Close()
-
-#         # Wait until Excel has finished its operations
-#         while excel.Workbooks.Count > 0:
-#             time.sleep(1)
-
-#         print(f"Conversion successful: {input_excel} -> {output_pdf}")
-#     except Exception as e:
-#         print(f"Conversion failed: {e}")
-#     finally:
-#         # Quit Excel application
-#         excel.Quit()
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = "bobby"
+app.secret_key = os.environ["SECRETKEY"]
 
-os.environ["MONGOKEY"] = "8EGuh1hHtHosYg5U"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 MClient = pymongo.MongoClient(MCString)['CK']
@@ -86,7 +79,6 @@ CORS(app)  # Enable CORS for all routes and origins
 
 # Configure FLASK_DEBUG from environment variable
 app.config['DEBUG'] = os.environ.get('FLASK_DEBUG')
-
 
 # Custom decorator for restricting access to certain routes
 def restricted_access(role):
@@ -101,6 +93,8 @@ def restricted_access(role):
         return wrapper
     return decorator
 
+
+##########################################################################
 # Catch /
 @app.route('/',methods=["GET"])
 def catch_stray():
@@ -252,6 +246,7 @@ def add_product_submit():
             'value': float(value)
         })
     ckProducts.insert_one(new_product)
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_product')
 
 # add hampers post
@@ -289,6 +284,7 @@ def add_hampers_submit():
         
     # Insert the new hamper into the MongoDB database
     ckHampers.insert_one(hamper)
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_hamper')
 
 # edit product get
@@ -326,6 +322,7 @@ def edit_product_submit(productID):
             'prices': prices
         }
     })
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_product',)
 
 # delete product get
@@ -336,6 +333,7 @@ def delete_product(productID):
     ckConn.delete_many({
         '_id':ObjectId(productID)
     })
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_product')
 
 # edit hampers get
@@ -353,8 +351,8 @@ def edit_hampers(hampersID):
     for item2 in itemDetails['items']:
         tempItemID = item2['product_id']
         QuantDict[ObjectId(tempItemID)] = item2['quantity']
-        print('added',item2['quantity'])
-    print(QuantDict)
+        # print('added',item2['quantity'])
+    # print(QuantDict)
     return render_template('edit_hampers.html',hamper = itemDetails, productsList = productsList, QuantDict = QuantDict, user_type = session['role'])
 
 # edit hampers post
@@ -391,6 +389,7 @@ def edit_hampers_submit(hampersID):
     },{
         '$set':hamper
     })
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_hamper')
 
 # delete hampers post
@@ -401,6 +400,7 @@ def delete_hampers(hampersID):
     ckHampers.delete_many({
         '_id':ObjectId(hampersID)
     })
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_hamper')
 
 @app.route('/edit_view_customer',methods=['GET'])
@@ -426,12 +426,14 @@ def edit_customer_submit(custID):
             'address':address
         }
     })
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_view_customer')
 
 @app.route('/delete_customer/<custID>',methods=["GET","POST"])
 @restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def delete_customer(custID):
     MClient['Customers'].delete_many({'_id':ObjectId(custID)})
+    os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return redirect('/edit_view_customer')
 
 #ENDGROUP: MODIFY DETAILS
@@ -489,7 +491,11 @@ def createPOSubmit():
     #adding products
     for product_id in selected_products:
         quantity_key = 'p_quantities_' + product_id
-        quantity = int(request.form.get(quantity_key, 0))
+        quantity = request.form.get(quantity_key, 0)
+        if quantity == '':
+            quantity = 0
+        else:
+            quantity = int(quantity)
         discount_key = product_id + '_product_discount'
         discount = float(request.form.get(discount_key, 0))
         price_type = request.form.get(product_id + '_price_type', '')
@@ -500,6 +506,8 @@ def createPOSubmit():
                 'quantity': quantity,
                 'price_type': price_type
             }
+        else:
+            continue
         
         if price_type=='custom':
             custom_price_key = product_id + "_custom_price"
@@ -514,7 +522,11 @@ def createPOSubmit():
     #adding hampers
     for product_id in selected_hampers:
         quantity_key = 'h_quantities_' + product_id
-        quantity = int(request.form.get(quantity_key, 0))
+        quantity = request.form.get(quantity_key, 0)
+        if quantity == '':
+            quantity = 0
+        else:
+            quantity = int(quantity)
         discount_key = product_id + '_hamper_discount'
         discount = float(request.form.get(discount_key, 0))
         price_type = request.form.get(product_id + '_price_type', '')
@@ -525,6 +537,8 @@ def createPOSubmit():
             'quantity': quantity,
             'price_type': price_type
         }
+        else:
+            continue
             
         if price_type == 'custom':
             custom_price_key = product_id + "_custom_price"
@@ -723,7 +737,11 @@ def edit_po_submit():
     #adding products
     for product_id in selected_products:
         quantity_key = 'p_quantities_' + product_id
-        quantity = int(request.form.get(quantity_key, 0))
+        quantity = (request.form.get(quantity_key, 0))
+        if quantity == '':
+            quantity = 0
+        else:
+            quantity = int(quantity)
         discount_key = product_id + '_product_discount'
         discount = float(request.form.get(discount_key, 0))
         price_type = request.form.get(product_id + '_price_type', '')
@@ -750,7 +768,11 @@ def edit_po_submit():
     #adding hampers
     for product_id in selected_hampers:
         quantity_key = 'h_quantities_' + product_id
-        quantity = int(request.form.get(quantity_key, 0))
+        quantity = (request.form.get(quantity_key, 0))
+        if quantity == '':
+            quantity = 0
+        else:
+            quantity = int(quantity)
         discount_key = product_id + '_hamper_discount'
         discount = float(request.form.get(discount_key, 0))
         price_type = request.form.get(product_id + '_price_type', '')
@@ -816,6 +838,538 @@ def post_po(poID):
             )
             discount = product.get('discount', 0.0)
             quantity = product.get('quantity')
+            append_object = {
+                '_id': product['product_id'],
+                'product_name': product_doc['name'],
+                'quantity': quantity,
+                'price_type':price_type,
+                'price_value':price_value,
+            }
+            if discount > 0.0:
+                append_object['discount'] = discount
+            else:
+                append_object['discount'] = 0.0
+            
+            products_data.append(append_object)
+
+        hampers_data = []
+
+        for hamper in order.get('hampers', []):
+            hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+            price_type = hamper.get('price_type', 'custom')
+            price_value = hamper['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+            )
+            discount = hamper.get('discount', 0.0)
+            quantity = hamper.get('quantity')
+            append_object = {
+                '_id': hamper['product_id'],
+                'hamper_name': hamper_doc['name'],
+                'quantity': hamper.get('quantity'),
+                'price_type':price_type,
+                'price_value':price_value,
+            }
+            if discount > 0.0:
+                append_object['discount'] = discount
+            else:
+                append_object['discount'] = 0.0
+            
+            for product in hamper_doc['items']:
+                print(product)
+                product_doc = products_collection.find_one({'_id': product['product_id']})
+            hampers_data.append(append_object)
+        
+        archived_object = {
+            '_id': ObjectId(poID),
+            'custID':customer['_id'],
+            'customer_name': customer['name'],
+            'customer_address': customer['address'],
+            'deliveryDate': order['deliveryDate'],
+            'products': products_data,
+            'hampers': hampers_data,
+            'orderDiscount': order.get('orderDiscount', 0.0),
+            'postedTime':datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        MClient['PostedPOs'].insert_one(archived_object)
+        MClient['POs'].delete_many({'_id':ObjectId(poID)})
+        send_whatsapp_message(archived_object)
+        return redirect('/viewPosted')
+
+@app.route("/viewPosted",methods=["GET","POST"])
+@restricted_access(['admin','orderUser','orderAdmin'])
+def lookup_posted():
+    page = int(request.args.get('page', 1))
+    start_index = (page - 1) * 3
+    end_index = start_index + 3
+    
+    result = list(MClient['PostedPOs'].find())
+    for order in result:
+        order['order_total'] = calculate_order_total(order)
+    result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
+    
+    # for specific date handling
+    target_dates = []
+    if request.method=='POST':
+        if request.form.get('specificDate'):
+            target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('startDate'):
+            target_dates = [request.form.get('startDate'),request.form.get('endDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        else:
+            filtered_orders = result_sorted
+    else:
+        filtered_orders = result_sorted
+    
+    total_pages = math.ceil(len(filtered_orders)/3.0)
+    # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
+    return render_template('posted_view.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
+
+
+#ENDGROUP
+
+###################################################################
+
+#GROUP: INVOICE
+@app.route('/createInvoice',methods=["GET","POST"])
+@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+def create_invoice():
+    # first page, choose between new or take from posted
+    if request.method == 'GET':
+        return render_template('create_invoice_start.html', user_type = session['role'])
+    
+    # create from scratch
+    elif request.form.get('create-type') == 'new':
+        #copy from create PO
+        customersList = list(MClient['Customers'].find())
+        productsList = list(MClient['Products'].find()) 
+        hampersList = list(MClient['Hampers'].find())
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        return render_template('create_invoice_new.html', customersList = customersList, productsList = productsList, hampersList = hampersList, current_date = current_date, user_type = session['role'])
+    
+    # take from posted
+    else:
+        #copy from view posted
+        page = int(request.args.get('page', 1))
+        start_index = (page - 1) * 3
+        end_index = start_index + 3
+        
+        result = list(MClient['PostedPOs'].find({'wasConverted':False}))
+        for order in result:
+            order['order_total'] = calculate_order_total(order)
+        result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
+        
+        # for specific date handling
+        target_dates = []
+        if request.method=='POST':
+            if request.form.get('specificDate'):
+                target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
+                filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+            elif request.form.get('startDate'):
+                target_dates = [request.form.get('startDate'),request.form.get('endDate')]
+                filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+            else:
+                filtered_orders = result_sorted
+        else:
+            filtered_orders = result_sorted
+        
+        total_pages = math.ceil(len(filtered_orders)/3.0)
+        # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
+        return render_template('posted_view_invoice.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
+
+def convert_from_old(order_details):
+    try:
+        products_updated, hampers_updated = [], []
+        customers_collection = MClient['Customers']
+        products_collection = MClient['Products']
+        hampers_collection = MClient['Hampers']
+        # print('test_top')
+        #check customer data
+        real_customer_data = dict(customers_collection.find_one({'_id':order_details['custID']}))
+        # print(real_customer_data)
+        if real_customer_data['name'] != order_details['customer_name']:
+            raise ValueError('name')
+        elif real_customer_data['address'] != order_details['customer_address']:
+            raise ValueError('address')
+        
+        #check products
+        for product in order_details['products']:
+            # print(product)
+            real_product_data = dict(products_collection.find_one({'_id':product['_id']}))
+            # print(real_product_data)
+            if real_product_data['name'] != product['product_name']:
+                raise ValueError('product name')
+            
+            # print('cust true2')
+            product_prices_dict = {}
+            for price in real_product_data['prices']:
+                product_prices_dict[price['name']] = price['value']
+            
+            if product['price_type'] not in product_prices_dict.keys():
+                raise ValueError('price_type not exist')
+            if product_prices_dict[product['price_type']] != product['price_value']:
+                raise ValueError('price type/value mismatch')
+            
+            products_updated.append({
+                'product_id':real_product_data['_id'],
+                'quantity':product['quantity'],
+                'price_type':product['price_type'],
+                'discount':product.get('discount',0.0)
+            })
+        
+        #check hampers
+        for product in order_details['hampers']:
+            real_product_data = dict(hampers_collection.find_one({'_id':product['_id']}))
+            if real_product_data['name'] != product['hamper_name']:
+                raise ValueError('hamper name')
+            
+            product_prices_dict = {}
+            for price in real_product_data['prices']:
+                product_prices_dict[price['name']] = price['value']
+            
+            if product['price_type'] not in product_prices_dict.keys():
+                raise ValueError('price_type not exist')
+            if product_prices_dict[product['price_type']] != product['price_value']:
+                raise ValueError('price type/value mismatch')
+            
+            hampers_updated.append({
+                'product_id':real_product_data['_id'],
+                'quantity':product['quantity'],
+                'price_type':product['price_type'],
+                'discount':product.get('discount',0.0)
+            })
+        
+        invoice_object = {
+            'po_id':order_details['_id'],
+            'custID':order_details['custID'],
+            'deliveryDate':order_details['deliveryDate'],
+            'products':products_updated,
+            'hampers':hampers_updated,
+            'orderDiscount':order_details['orderDiscount'],
+            'invoiceType':'updated'
+        }
+        
+        return invoice_object
+    except Exception as e:
+        return e
+
+def convert_from_new(order_details):
+    products_updated, hampers_updated = [], []
+    
+    #check products
+    for product in order_details['products'] + order_details['hampers']:
+        products_updated.append({
+            'product_id':product['_id'],
+            'quantity':product['quantity'],
+            'price_type':product['price_type'],
+            'discount':product.get('discount',0.0)
+        })
+    
+    invoice_object = {
+        'po_id':order_details['_id'],
+        'custID':order_details['custID'],
+        'deliveryDate':order_details['deliveryDate'],
+        'products':products_updated,
+        'hampers':hampers_updated,
+        'orderDiscount':order_details['orderDiscount'],
+        'invoiceType':'updated'
+    }
+    
+    return invoice_object
+
+@app.route('/createInvoiceFromPosted/<postedID>',methods=["GET"])
+@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+def create_invoice_from_posted(postedID):
+    #tries to convert posted into an invoice, if not tries to fix
+    
+    lastModifiedTime = datetime.strptime(os.environ['LAST_MODIFIED'],"%Y-%m-%d %H:%M:%S")
+    order_details = dict(MClient["PostedPOs"].find_one({'_id':ObjectId(postedID)}))
+    order_posted_time  = datetime.strptime(order_details['postedTime'], "%Y-%m-%d %H:%M:%S")
+    print(order_details)
+    
+    # if order is made before last change
+    if order_posted_time < lastModifiedTime:
+        try:
+            invoice_object = convert_from_old(order_details)
+            print("result:",invoice_object)
+            
+            # any failure in conversion, raise error
+            if type(invoice_object) != dict:
+                raise ValueError(invoice_object)
+
+            # successful conversion, then insert to invoices
+            MClient['Invoices'].insert_one(invoice_object)
+            invoiceID = dict(MClient['Invoices'].find_one({'po_id':ObjectId(postedID)}))['_id']
+            MClient['PostedPOs'].update_one({'_id':postedID},{
+                '$set':{
+                    'wasConverted':True
+                }
+            })
+            return redirect(f'/print_invoice/{invoiceID}')
+            
+        # handling of failed conversion -> use manual input
+        except Exception as e:
+            print(e)
+            MClient['PostedPOs'].update_one({'_id':postedID},{
+                '$set':{
+                    'wasConverted':True
+                }
+            })
+            return render_template('create_invoice_manual.html',data=order_details, error=e, user_type = session['role'])
+    else:
+        invoice_object = convert_from_new(order_details)
+        MClient['Invoices'].insert_one(invoice_object)
+        invoiceID = dict(MClient['Invoices'].find_one({'po_id':ObjectId(postedID)}))['_id']
+        return redirect(f"/print_invoice/{invoiceID}")
+
+@app.route('/insertInvoice',methods=['POST'])
+@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+def insert_invoice():
+    #only handle invoices from scratch OR broken ones
+    #handle like new order
+    if request.form.get('invoiceType') == 'new':
+        
+        #handling customers
+        existingCustomerID = request.form.get('existing_customer_id')
+        if existingCustomerID:
+            custID = ObjectId(existingCustomerID)
+        else:
+            custName = request.form.get('customer_name')
+            address = request.form.get('address')
+            
+            ckCustomers = MClient['Customers']
+            ckCustomers.insert_one({
+                'name':custName,
+                'address':address
+            })
+            custID = ckCustomers.find_one({'name':custName,'address':address})['_id']
+
+        #handling date
+        deliveryDate = request.form.get('delivery_date')
+        orderDiscount = float(request.form.get('order-discount'))
+        
+        #taking products and hampers list
+        selected_products = request.form.getlist('products[]')
+        selected_hampers = request.form.getlist('hampers[]')
+        
+        #creating basic order object
+        OrderObject = {
+            'custID':custID,
+            'deliveryDate':deliveryDate,
+            'products': [],
+            'hampers':[],
+            'invoiceType':'new'
+        }
+
+        if orderDiscount > 0:
+            OrderObject['orderDiscount']=orderDiscount
+        else:
+            OrderObject['orderDiscount'] = 0.0
+        
+        #adding products
+        for product_id in selected_products:
+            quantity_key = 'p_quantities_' + product_id
+            quantity = int(request.form.get(quantity_key, 0))
+            discount_key = product_id + '_product_discount'
+            discount = float(request.form.get(discount_key, 0))
+            price_type = request.form.get(product_id + '_price_type', '')
+            
+            if quantity > 0:
+                product_object = {
+                    'product_id': ObjectId(product_id),
+                    'quantity': quantity,
+                    'price_type': price_type
+                }
+            
+            if price_type=='custom':
+                custom_price_key = product_id + "_custom_price"
+                custom_price = float(request.form.get(custom_price_key, 0))
+                product_object['custom_price'] = custom_price
+            
+            if discount > 0:
+                product_object['discount'] = discount
+            
+            OrderObject['products'].append(product_object)
+
+        #adding hampers
+        for product_id in selected_hampers:
+            quantity_key = 'h_quantities_' + product_id
+            quantity = int(request.form.get(quantity_key, 0))
+            discount_key = product_id + '_hamper_discount'
+            discount = float(request.form.get(discount_key, 0))
+            price_type = request.form.get(product_id + '_price_type', '')
+            
+            if quantity > 0:
+                hamper_entry = {
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
+                'price_type': price_type
+            }
+                
+            if price_type == 'custom':
+                custom_price_key = product_id + "_custom_price"
+                custom_price = float(request.form.get(custom_price_key, 0))
+                hamper_entry['custom_price'] = custom_price
+
+            if discount > 0:
+                hamper_entry['discount'] = discount
+            
+            OrderObject['hampers'].append(hamper_entry)
+        invoiceID = MClient['Invoices'].insert_one(OrderObject).inserted_id
+        # print(OrderObject)
+        return redirect(f'/print_invoice/{invoiceID}')
+    
+    #convert data to all custom
+    else:
+        order_object = {
+            'customer_name':request.form.get('customer_name'),
+            'customer_address':request.form.get('customer_address'),
+            'deliveryDate':request.form.get('deliveryDate'),
+            'orderDiscount':float(request.form.get('orderDiscount')),
+            'items':[],
+            'invoiceType':'broken',
+        }
+        product_name_array = request.form.getlist('product_name[]')
+        product_price_array = request.form.getlist('product_price[]')
+        quantity_array = request.form.getlist('quantity[]')
+        discount_array = request.form.getlist('discount[]')
+        print(product_name_array, product_price_array, quantity_array, discount_array)
+        for i in range(len(product_name_array)):
+            try:
+                a,b,c,d = product_name_array[i], product_price_array[i], quantity_array[i], discount_array[i]
+            except:
+                continue
+            order_object['items'].append({
+                'name':product_name_array[i],
+                'price_value':float(product_price_array[i]),
+                'quantity':int(quantity_array[i]),
+                'discount':float(discount_array[i]),
+                
+            })
+        invoiceID = MClient['Invoices'].insert_one(order_object).inserted_id
+        return redirect(f'/print_invoice/{invoiceID}')
+
+@app.route('/viewInvoices',methods=['GET','POST'])
+@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+def view_invoices():
+    page = int(request.args.get('page', 1))
+    start_index = (page - 1) * 3
+    end_index = start_index + 3
+    
+    orders_collection = MClient['Invoices']
+    products_collection = MClient['Products']
+    hampers_collection = MClient['Hampers']
+    customers_collection = MClient['Customers']
+    
+    result = []
+
+    for order in orders_collection.find():
+        if order['invoiceType'] != 'broken':
+            customer = customers_collection.find_one({'_id': order['custID']})
+            products_data = []
+
+            for product in order.get('products', []):
+                product_doc = products_collection.find_one({'_id': product['product_id']})
+                price_type = product.get('price_type', 'custom')
+                price_value = product['custom_price'] if price_type == 'custom' else next(
+                    (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+                )
+                products_data.append({
+                    'product_name': product_doc['name'],
+                    'price_name': price_type,
+                    'price_value': price_value,
+                    'quantity': product.get('quantity'),
+                    'discount': product.get('discount', 0.0)
+                })
+
+            hampers_data = []
+
+            for hamper in order.get('hampers', []):
+                hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+                price_type = hamper.get('price_type', 'custom')
+                price_value = hamper['custom_price'] if price_type == 'custom' else next(
+                    (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+                )
+                hampers_data.append({
+                    'hamper_name': hamper_doc['name'],
+                    'price_name': price_type,
+                    'price_value': price_value,
+                    'quantity': hamper.get('quantity'),
+                    'discount': hamper.get('discount', 0.0)
+                })
+
+            result.append({
+                '_id': order['_id'],
+                'customer_name': customer['name'],
+                'customer_address': customer['address'],
+                'deliveryDate': order['deliveryDate'],
+                'products': products_data,
+                'hampers': hampers_data,
+                'orderDiscount': order.get('orderDiscount', 0.0)
+            })
+        else:
+            for product in order['items']:
+                product['product_name'] = product['name']
+                product['price_name'] = 'custom'
+            result.append({
+                '_id': order['_id'],
+                'customer_name': order['customer_name'],
+                'customer_address': order['customer_address'],
+                'deliveryDate': order['deliveryDate'],
+                'products': order['items'],
+                'hampers': [],
+                'orderDiscount': order.get('orderDiscount', 0.0)
+            })
+
+    # calculating order total :/
+    for order in result:
+        order['order_total'] = calculate_order_total(order)
+    result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
+    
+    # for specific date handling
+    target_dates = []
+    if request.method=='POST':
+        if request.form.get('specificDate'):
+            target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('startDate'):
+            target_dates = [request.form.get('startDate'),request.form.get('endDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        else:
+            filtered_orders = result_sorted
+    else:
+        filtered_orders = result_sorted
+    
+    # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
+    print(len(filtered_orders))
+    total_pages = math.ceil(len(filtered_orders) / 3.0)
+    return render_template('lookup_invoices.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates)
+
+@app.route('/archive_invoice/<invoiceID>',methods=['GET','POST'])
+@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+def archive_invoice(invoiceID):
+    if request.method == 'GET':
+        return render_template('archive_invoice_confirm.html', data=invoiceID, user_type = session['role'], poID = invoiceID)
+    
+    order = dict(MClient['Invoices'].find_one({'_id':ObjectId(invoiceID)}))
+    if order['invoiceType'] != 'broken':
+        poID = invoiceID
+        customers_collection = MClient['Customers']
+        products_collection = MClient['Products']
+        hampers_collection = MClient['Hampers']
+        
+        customer = customers_collection.find_one({'_id': order['custID']})
+        products_data = []
+
+        for product in order.get('products', []):
+            product_doc = products_collection.find_one({'_id': product['product_id']})
+            price_type = product.get('price_type', 'custom')
+            price_value = product['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+            )
+            discount = product.get('discount', 0.0)
+            quantity = product.get('quantity')
             currentStock = product_doc.get('currentStock',0)
             
             append_object = {
@@ -830,9 +1384,13 @@ def post_po(poID):
             else:
                 append_object['discount'] = 0.0
             
+            if currentStock - quantity < 0:
+                newStock = 0
+            else:
+                newStock = currentStock - quantity
             products_collection.update_one({'_id': product['product_id']}, {
                 '$set':{
-                    'currentStock':currentStock - quantity
+                    'currentStock':newStock
                 }
             })
             products_data.append(append_object)
@@ -863,9 +1421,13 @@ def post_po(poID):
                 print(product)
                 product_doc = products_collection.find_one({'_id': product['product_id']})
                 currentStock = product_doc.get('currentStock',0)
+                if currentStock - (quantity * product['quantity']) < 0:
+                        newStock = 0
+                else:
+                    newStock = currentStock - (quantity * product['quantity'])
                 products_collection.update_one({'_id': product['product_id']}, {
                     '$set':{
-                        'currentStock':currentStock - (quantity * product['quantity'])
+                        'currentStock':newStock
                     }
                 })
             hampers_data.append(append_object)
@@ -878,22 +1440,34 @@ def post_po(poID):
             'deliveryDate': order['deliveryDate'],
             'products': products_data,
             'hampers': hampers_data,
-            'orderDiscount': order.get('orderDiscount', 0.0)
+            'orderDiscount': order.get('orderDiscount', 0.0),
+            'archivedTime':datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'invoiceType':order['invoiceType']
         }
         
-        MClient['PostedPOs'].insert_one(archived_object)
-        MClient['POs'].delete_many({'_id':ObjectId(poID)})
-        return redirect('/viewPosted')
-
-@app.route("/viewPosted",methods=["GET","POST"])
-@restricted_access(['admin','orderUser','orderAdmin','invoiceUser','invoiceAdmin'])
-def lookup_posted():
+        MClient['ArchivedInvoices'].insert_one(archived_object)
+        MClient['Invoices'].delete_many({'_id':ObjectId(poID)})
+        return redirect('/viewArchived')
+    else:
+        MClient['ArchivedInvoices'].insert_one(order)
+        MClient['Invoices'].delete_many({'_id':ObjectId(invoiceID)})
+        return redirect('/viewArchived')
+    
+@app.route('/viewArchived', methods=['GET','POST'])
+@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+def view_archived():
     page = int(request.args.get('page', 1))
     start_index = (page - 1) * 3
     end_index = start_index + 3
     
-    result = list(MClient['PostedPOs'].find())
+    result = list(MClient['ArchivedInvoices'].find())
     for order in result:
+        if order['invoiceType'] == 'broken':
+            order['products'] = order['items']
+            order['hampers'] = []
+            for item in order['products']:
+                item['product_name'] = item['name']
+                item['price_type'] = 'custom'
         order['order_total'] = calculate_order_total(order)
     result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
     
@@ -916,6 +1490,396 @@ def lookup_posted():
     return render_template('posted_view.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
 
 
+@app.route('/print_invoice/<invoiceID>',methods=['GET'])
+@restricted_access(['admin','invoiceAdmin','invoiceUser'])
+def print_invoice(invoiceID):
+    order = dict(MClient['Invoices'].find_one({'_id':ObjectId(invoiceID)}))
+    if order['invoiceType'] != 'broken':
+        products_collection = MClient['Products']
+        hampers_collection = MClient['Hampers']
+        customers_collection = MClient['Customers']
+        
+        customer = customers_collection.find_one({'_id': order['custID']})
+        products_data = []
+
+        for product in order.get('products', []):
+            product_doc = products_collection.find_one({'_id': product['product_id']})
+            price_type = product.get('price_type', 'custom')
+            price_value = product['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+            )
+            products_data.append({
+                'name': product_doc['name'],
+                'price_name': price_type,
+                'price_value': price_value,
+                'quantity': product.get('quantity'),
+                'discount': product.get('discount', 0.0)
+            })
+
+        hampers_data = []
+
+        for hamper in order.get('hampers', []):
+            hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+            price_type = hamper.get('price_type', 'custom')
+            price_value = hamper['custom_price'] if price_type == 'custom' else next(
+                (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+            )
+            hampers_data.append({
+                'name': hamper_doc['name'],
+                'price_name': price_type,
+                'price_value': price_value,
+                'quantity': hamper.get('quantity'),
+                'discount': hamper.get('discount', 0.0)
+            })
+
+        result = {
+            '_id': order['_id'],
+            'customer_name': customer['name'],
+            'customer_address': customer['address'],
+            'deliveryDate': order['deliveryDate'],
+            'products': products_data,
+            'hampers': hampers_data,
+            'orderDiscount': order.get('orderDiscount', 0.0)
+        }
+    else:
+        result = {
+            '_id': order['_id'],
+            'customer_name': order['customer_name'],
+            'customer_address': order['customer_address'],
+            'deliveryDate': order['deliveryDate'],
+            'products': order['items'],
+            'hampers': [],
+            'orderDiscount': order.get('orderDiscount', 0.0)
+        }
+    
+    output_directory = 'pdf_results'
+    os.makedirs(output_directory, exist_ok=True)
+    output_pdf_path = os.path.join('pdf_results', 'output.pdf')
+    
+    page_height_cm = 21.3 * cm
+    page_size = (16.2 * cm, 21.3 * cm)
+    pdf = canvas.Canvas(output_pdf_path, pagesize=page_size)
+    # pdf = SimpleDocTemplate(output_pdf_path, pagesize=page_size)
+    content = []
+    labels = []
+    order_total = 0.0
+    
+    #handling customer
+    dateObject = datetime.strptime(result['deliveryDate'],"%Y-%m-%d")
+    formatted_date = format_date(dateObject, locale='id_ID')
+    labels.append((formatted_date, (13.5 * cm, page_height_cm - 1.5 * cm)))
+    labels.append((result['customer_name'], (12.8 * cm, page_height_cm - 2.7 * cm)))
+    custAdd = result['customer_address']
+    def split_address(address):
+        # Check if the address is already short enough
+        if len(address) <= 14:
+            return address, ""
+
+        # Find a space near the middle of the address
+        mid_index = len(address) // 2
+        while mid_index < len(address) and address[mid_index] != ' ':
+            mid_index += 1
+
+        # If no space is found, split at the middle
+        if mid_index == len(address):
+            mid_index = len(address) // 2
+
+        # Split the address at the found space or middle
+        first_part = address[:mid_index].rstrip()
+        second_part = address[mid_index:].lstrip()
+
+        return first_part, second_part
+    
+    part1, part2 = split_address(custAdd)
+        
+    labels.append((part1, (12.8 * cm, page_height_cm - 3.4 * cm)))
+    labels.append((part2, (12.8 * cm, page_height_cm - 4.1 * cm)))
+    
+    for text, (x, y) in labels:
+        tempPara = Paragraph(text,style=getSampleStyleSheet()['BodyText'])
+        tempPara.wrapOn(pdf,300,300)
+        tempPara.drawOn(pdf,x,y)
+        # pdf.drawString(x,y,text)
+        
+    table_data = []
+    item_counter = 0
+    for product in result['products'] + result['hampers']:
+        current_row_data= []
+        current_row_data.append(f"{product['quantity']} pcs")
+        current_row_data.append(f"{product['name']}")
+        
+        price_value = product['price_value']
+        if 'price_name' in product.keys():
+            price_name = product['price_name']
+        else:
+            price_name = 'custom'
+        quantity = product['quantity']
+        current_row_data.append(f"{int(price_value)} ({price_name[0]})")
+        
+        if product['discount'] > 0.0:
+            discount = product['discount']
+            discount_value = round(discount * 0.01 * price_value / 100) * 100
+            final_value = int(price_value - discount_value)
+            
+            discount_row_data = ["",f"Discount ({discount}%)",f"-{discount_value}", ""]
+            final_value_data = ["","",f"  ={final_value}",""]
+            current_row_data.append(int(final_value * quantity))
+            order_total += final_value * quantity
+            table_data.append(current_row_data)
+            table_data.append(discount_row_data)
+            table_data.append(final_value_data)
+            item_counter += 3
+        else:
+            total_value = int(price_value * quantity)
+            current_row_data.append(total_value)
+            order_total += total_value
+            table_data.append(current_row_data)
+            item_counter += 1
+    
+    print(table_data)
+    if result['orderDiscount'] > 0.0:
+        rows_to_append = 13 - item_counter
+        for i in range(rows_to_append): table_data.append(["","","",""])
+        table_data.append(["","Subtotal","",f"{round(order_total/100)*100}"])
+        discount_value = round(result['orderDiscount'] * 0.01 * order_total / 100) * 100
+        table_data.append(["",f"Order Discount ({round(result['orderDiscount'])}%)","",f"-{discount_value}"])
+        final_value = round((order_total - discount_value) / 100) * 100
+        table_data.append(["","","",f"{final_value}"])
+    else:
+        rows_to_append = 15 - item_counter
+        for i in range(rows_to_append): table_data.append(["","","",""])
+        table_data.append(["","","",f"{round(order_total/100)*100}"])
+    
+    
+    col_widths_cm = [2.2 * cm, 6.8 * cm, 2.4 * cm, 2.8 * cm]
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.white),  # White background for the header row
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),  # Text color for the header row
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white), # White background for data rows
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),       # Arial font for data rows
+    ])
+    print(table_data)
+    table = Table(table_data, colWidths=col_widths_cm)
+    table.setStyle(table_style)
+    table_x = 2 * cm
+    table_y = 4 * cm
+    table_position = (table_x, page_size[1] - table_y)
+    print(table_position)
+    table.leftIndent = table_x
+    table.topIndent = page_size[1] - table_y
+    
+    # pdf.line(0,0,100,100)
+    table.wrapOn(pdf,0,0)
+    table.drawOn(pdf,table_x,table_y)
+    pdf.showPage()
+    pdf.save()
+    
+    print(output_pdf_path)
+    encoded_pdf_content = encode_pdf_as_base64(output_pdf_path)
+    return render_template('print_invoice.html',encoded_content = encoded_pdf_content, user_type = session['role'], invoiceID = invoiceID)
+
+@app.route('/edit_invoice/<poID>',methods=['GET'])
+def edit_invoice(poID):
+    order_data = dict(MClient['Invoices'].find_one({'_id':ObjectId(poID)}))
+    if order_data['invoiceType'] != 'broken':
+        products_data = list(MClient['Products'].find())
+        hampers_data = list(MClient['Hampers'].find())
+        customer_data = dict(MClient['Customers'].find_one({'_id':order_data['custID']}))
+        customersList = list(MClient['Customers'].find())
+        
+        # Convert the list of products in order_data to a dictionary for easier lookup
+        products_in_order = {str(product['product_id']): product for product in order_data.get('products', [])}
+        hampers_in_order = {str(hamper['product_id']): hamper for hamper in order_data.get('hampers', [])}
+        
+        # Add a quantity and custom_price field to each product based on order_data
+        for product in products_data:
+            product_id_str = str(product['_id'])
+            product_in_order = products_in_order.get(product_id_str, {})
+            
+            product['quantity_in_order'] = product_in_order.get('quantity', 0)
+            product['in_order'] = bool(product_in_order)  # Add in_order flag
+            if product_in_order:
+                product['price_type'] = product_in_order['price_type']
+                if product_in_order['price_type'] == 'custom':
+                    product['has_custom_price'] = True
+                    product['custom_price_in_order'] = product_in_order.get('custom_price')
+                else:
+                    product['has_custom_price'] = False
+                    price_type = product_in_order.get('price_type')
+                    product['custom_price_in_order'] = next((price['value'] for price in product['prices'] if price_type == price['name']), None)
+                    print(product['custom_price_in_order'])
+
+        for hamper in hampers_data:
+            hamper_id_str = str(hamper['_id'])
+            hamper_in_order = hampers_in_order.get(hamper_id_str, {})
+            
+            hamper['quantity_in_order'] = hamper_in_order.get('quantity', 0)
+            hamper['in_order'] = bool(hamper_in_order)  # Add in_order flag
+            if hamper_in_order:
+                hamper['price_type'] = hamper_in_order['price_type']
+                if hamper_in_order['price_type'] == 'custom':
+                    hamper['has_custom_price'] = True
+                    hamper['custom_price_in_order'] = hamper_in_order.get('custom_price')
+                else:
+                    hamper['has_custom_price'] = False
+                    price_type = hamper_in_order.get('price_type')
+                    hamper['custom_price_in_order'] = next((price['value'] for price in hamper['prices'] if price_type == price['name']), None)
+                    print(hamper['custom_price_in_order'])
+
+        return render_template("edit_invoice.html",order_data = order_data, products_data = products_data, hampers_data = hampers_data, customer_data = customer_data, customersList = customersList, user_type = session['role'])
+    else:
+        return render_template("edit_invoice_manual.html",data = order_data, user_type = session['role'])
+
+@app.route('/edit_invoice_submit',methods=['POST'])
+def edit_invoice_submit():
+    poID = request.form.get('invoiceID')
+    order_data = dict(MClient['Invoices'].find_one({'_id':ObjectId(poID)}))
+    if order_data['invoiceType'] != 'broken':
+        orderID = poID
+        
+        #handling customer
+        custID = request.form.get('custID')
+        existing_customer_id = request.form.get('existing_customer_id')
+        if existing_customer_id != "":
+            custID = existing_customer_id
+            MClient['POs'].update_one({'_id':ObjectId(orderID)},{
+                '$set':{
+                    'custID':ObjectId(custID)
+                }
+            })
+        else:
+            customer_name = request.form.get('customer_name')
+            customer_address = request.form.get('customer_address')
+            print("stop",customer_name,customer_address)
+            MClient['Customers'].update_one({'_id':ObjectId(custID)},{
+                '$set':{
+                    'name':customer_name,
+                    'address':customer_address
+                }
+            })
+        
+        #handling delivery date and order discount
+        deliveryDate = request.form.get('deliveryDate')
+        orderDiscount = request.form.get('order-discount')
+        if orderDiscount:
+            orderDiscount = float(orderDiscount)
+        else:
+            orderDiscount = 0.0
+        
+        #taking products and hampers list
+        selected_products = request.form.getlist('products[]')
+        selected_hampers = request.form.getlist('hampers[]')
+        
+        #creating basic order object
+        OrderObject = {
+            'custID':ObjectId(custID),
+            'deliveryDate':deliveryDate,
+            'products': [],
+            'hampers':[]
+        }
+        
+        #adding products
+        for product_id in selected_products:
+            quantity_key = 'p_quantities_' + product_id
+            quantity = (request.form.get(quantity_key, 0))
+            if quantity == '':
+                quantity = 0
+            else:
+                quantity = int(quantity)
+            discount_key = product_id + '_product_discount'
+            discount = float(request.form.get(discount_key, 0))
+            price_type = request.form.get(product_id + '_price_type', '')
+            
+            if quantity > 0:
+                product_object = {
+                    'product_id': ObjectId(product_id),
+                    'quantity': quantity,
+                    'price_type': price_type
+                }
+            else:
+                continue
+            
+            if price_type=='custom':
+                custom_price_key = product_id + "_custom_price"
+                custom_price = float(request.form.get(custom_price_key, 0))
+                product_object['custom_price'] = custom_price
+            
+            if discount > 0:
+                product_object['discount'] = discount
+            
+            OrderObject['products'].append(product_object)
+
+        #adding hampers
+        for product_id in selected_hampers:
+            quantity_key = 'h_quantities_' + product_id
+            quantity = (request.form.get(quantity_key, 0))
+            if quantity == '':
+                quantity = 0
+            else:
+                quantity = int(quantity)
+            discount_key = product_id + '_hamper_discount'
+            discount = float(request.form.get(discount_key, 0))
+            price_type = request.form.get(product_id + '_price_type', '')
+            
+            if quantity > 0:
+                hamper_entry = {
+                'product_id': ObjectId(product_id),
+                'quantity': quantity,
+                'price_type': price_type
+            }
+            else:
+                continue
+                
+            if price_type == 'custom':
+                custom_price_key = product_id + "_custom_price"
+                custom_price = float(request.form.get(custom_price_key, 0))
+                hamper_entry['custom_price'] = custom_price
+
+            if discount > 0:
+                hamper_entry['discount'] = discount
+            
+            OrderObject['hampers'].append(hamper_entry)
+            
+        #handling orderDiscount
+        if orderDiscount >= 0:
+            OrderObject['orderDiscount'] = orderDiscount
+        
+        ##end of copy
+        ckPOs = MClient['Invoices']
+        pprint.PrettyPrinter(width=50).pprint(OrderObject)   
+        ckPOs.update_one({'_id':ObjectId(poID)},{'$set':OrderObject})
+
+        print(OrderObject)
+        return redirect(f'/print_invoice/{poID}')
+    else:
+        order_object = {
+            'customer_name':request.form.get('customer_name'),
+            'customer_address':request.form.get('customer_address'),
+            'deliveryDate':request.form.get('deliveryDate'),
+            'orderDiscount':float(request.form.get('orderDiscount')),
+            'items':[],
+            'invoiceType':'broken',
+        }
+        product_name_array = request.form.getlist('product_name[]')
+        product_price_array = request.form.getlist('product_price[]')
+        quantity_array = request.form.getlist('quantity[]')
+        discount_array = request.form.getlist('discount[]')
+        for i in range(len(product_name_array)):
+            try:
+                a,b,c,d = product_name_array[i], product_price_array[i], quantity_array[i], discount_array[i]
+            except:
+                continue
+            order_object['items'].append({
+                'name':product_name_array[i],
+                'price_value':float(product_price_array[i]),
+                'quantity':int(quantity_array[i]),
+                'discount':float(discount_array[i]),
+                
+            })
+        MClient['Invoices'].update_many({'_id':ObjectId(poID)},{'$set':order_object})
+        return redirect(f'/print_invoice/{poID}')
+        
 #ENDGROUP
 
 ###################################################################
@@ -1056,157 +2020,6 @@ def summary():
             return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate)
         
     
-@app.route('/print_invoice/<invoiceID>',methods=['GET'])
-@restricted_access(['admin','invoiceAdmin','invoiceUser'])
-def print_po(invoiceID):
-    output_path = f"excel_results/output_{invoiceID}.xlsx"
-    order = dict(MClient['Invoices'].find_one({'_id':ObjectId(invoiceID)}))
-    products_collection = MClient['Products']  # Assuming this is the correct name for the Products collection
-    hampers_collection = MClient['Hampers']
-    customers_collection = MClient['Customers']
-    
-    customer = customers_collection.find_one({'_id': order['custID']})
-    products_data = []
-
-    for product in order.get('products', []):
-        product_doc = products_collection.find_one({'_id': product['product_id']})
-        price_type = product.get('price_type', 'custom')
-        price_value = product['custom_price'] if price_type == 'custom' else next(
-            (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
-        )
-        products_data.append({
-            'name': product_doc['name'],
-            'price_name': price_type,
-            'price_value': price_value,
-            'quantity': product.get('quantity'),
-            'discount': product.get('discount', 0.0)
-        })
-
-    hampers_data = []
-
-    for hamper in order.get('hampers', []):
-        hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
-        price_type = hamper.get('price_type', 'custom')
-        price_value = hamper['custom_price'] if price_type == 'custom' else next(
-            (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
-        )
-        hampers_data.append({
-            'name': hamper_doc['name'],
-            'price_name': price_type,
-            'price_value': price_value,
-            'quantity': hamper.get('quantity'),
-            'discount': hamper.get('discount', 0.0)
-        })
-
-    result = {
-        '_id': order['_id'],
-        'customer_name': customer['name'],
-        'customer_address': customer['address'],
-        'deliveryDate': order['deliveryDate'],
-        'products': products_data,
-        'hampers': hampers_data,
-        'orderDiscount': order.get('orderDiscount', 0.0)
-    }
-    
-    output_directory = 'pdf_results'
-    os.makedirs(output_directory, exist_ok=True)
-    output_pdf_path = os.path.join('pdf_results', 'output.pdf')
-    
-    page_height_cm = 21.3 * cm
-    page_size = (16.2 * cm, 21.3 * cm)
-    pdf = canvas.Canvas(output_pdf_path, pagesize=page_size)
-    # pdf = SimpleDocTemplate(output_pdf_path, pagesize=page_size)
-    content = []
-    labels = []
-    order_total = 0.0
-    
-    #handling customer
-    dateObject = datetime.strptime(result['deliveryDate'],"%Y-%m-%d")
-    formatted_date = format_date(dateObject, locale='id_ID')
-    labels.append((formatted_date, (13.5 * cm, page_height_cm - 1.5 * cm)))
-    labels.append((result['customer_name'], (12.8 * cm, page_height_cm - 2.7 * cm)))
-    labels.append((result['customer_address'], (12.8 * cm, page_height_cm - 3.4 * cm)))
-    
-    for text, (x, y) in labels:
-        tempPara = Paragraph(text,style=getSampleStyleSheet()['BodyText'])
-        tempPara.wrapOn(pdf,300,300)
-        tempPara.drawOn(pdf,x,y)
-        # pdf.drawString(x,y,text)
-        
-    table_data = []
-    item_counter = 0
-    for product in result['products'] + result['hampers']:
-        current_row_data= []
-        current_row_data.append(f"{product['quantity']} pcs")
-        current_row_data.append(f"{product['name']}")
-        
-        price_value = product['price_value']
-        price_name = product['price_name']
-        quantity = product['quantity']
-        current_row_data.append(f"{int(price_value)} ({price_name[0]})")
-        
-        if product['discount'] > 0.0:
-            discount = product['discount']
-            discount_value = round(discount * 0.01 * price_value / 100) * 100
-            final_value = int(price_value - discount_value)
-            
-            discount_row_data = ["",f"Discount ({discount}%)",f"-{discount_value}", ""]
-            final_value_data = ["","",f"  ={final_value}",""]
-            current_row_data.append(int(final_value * quantity))
-            order_total += final_value * quantity
-            table_data.append(current_row_data)
-            table_data.append(discount_row_data)
-            table_data.append(final_value_data)
-            item_counter += 3
-        else:
-            total_value = int(price_value * quantity)
-            current_row_data.append(total_value)
-            order_total += total_value
-            table_data.append(current_row_data)
-            item_counter += 1
-    
-    print(table_data)
-    if result['orderDiscount'] > 0.0:
-        rows_to_append = 13 - item_counter
-        for i in range(rows_to_append): table_data.append(["","","",""])
-        table_data.append(["","Subtotal","",f"{round(order_total/100)*100}"])
-        discount_value = round(result['orderDiscount'] * 0.01 * order_total / 100) * 100
-        table_data.append(["",f"Order Discount ({round(result['orderDiscount'])}%)","",f"-{discount_value}"])
-        final_value = round((order_total - discount_value) / 100) * 100
-        table_data.append(["","","",f"{final_value}"])
-    else:
-        rows_to_append = 15 - item_counter
-        for i in range(rows_to_append): table_data.append(["","","",""])
-        table_data.append(["","","",f"{round(order_total/100)*100}"])
-    
-    
-    col_widths_cm = [2.2 * cm, 6.8 * cm, 2.4 * cm, 2.8 * cm]
-    table_style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.white),  # White background for the header row
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),  # Text color for the header row
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.white), # White background for data rows
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),       # Arial font for data rows
-    ])
-    print(table_data)
-    table = Table(table_data, colWidths=col_widths_cm)
-    table.setStyle(table_style)
-    table_x = 2 * cm
-    table_y = 4 * cm
-    table_position = (table_x, page_size[1] - table_y)
-    print(table_position)
-    table.leftIndent = table_x
-    table.topIndent = page_size[1] - table_y
-    
-    # pdf.line(0,0,100,100)
-    table.wrapOn(pdf,0,0)
-    table.drawOn(pdf,table_x,table_y)
-    pdf.showPage()
-    pdf.save()
-    
-    print(output_pdf_path)
-    encoded_pdf_content = encode_pdf_as_base64(output_pdf_path)
-    return render_template('print_po.html',encoded_content = encoded_pdf_content)
 
 
 @app.route('/login', methods=['GET', 'POST'])

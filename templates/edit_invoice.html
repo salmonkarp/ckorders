@@ -16,7 +16,7 @@
 
 {% block content %}
 <head>
-    <title>Edit PO</title>
+    <title>Edit Invoice</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -102,14 +102,14 @@
     </style>
 </head>
 <body>
-    <form action="/edit_po_submit" enctype="multipart/form-data" method="post">
+    <form action="/edit_invoice_submit" enctype="multipart/form-data" method="post">
         <div class="center_form">
             <h2>Edit PO</h2>
 
             <p>
                 Order ID: {{ order_data['_id'] }} <br>
             </p>
-            <input type="hidden" name="orderID" value="{{ order_data._id }}">
+            <input type="hidden" name="invoiceID" value="{{ order_data._id }}">
             
             <!-- Choose from either product or hampers -->
             <label>

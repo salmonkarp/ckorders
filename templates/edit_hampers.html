@@ -84,6 +84,12 @@
             width: 50px;
             padding: 5px;
         }
+        .product-list-container {
+            max-height: 200px; /* Set the maximum height for the container */
+            overflow-y: auto; /* Enable vertical scrolling if content exceeds the container height */
+            border: 1px solid #ccc; /* Add a border to create a bounding box */
+            border-radius: 5px;
+        }
         @media only screen and (max-width: 768px) {
             body, a.back, input, input[type="submit"], button, select {
                 font-size:2vw;
@@ -106,16 +112,29 @@
                 <td><input type="text" name="hname" value="{{hamper['name']}}"></td>
             </tr>
             <tr>
-                <td>Products</td>
+                <td>
+                    <p>Hamper Contents <br>
+                        <label for="product-checkbox" class="filter-checkbox">Show Checked Only</label>
+                        <input type="checkbox" id="product-checkbox">
+                    </p>
+                </td>
                 <td colspan="2">
-                    <table>
-                        {% for product in productsList %}
-                        <tr>
-                            <td>{{ product.name }}</td>
-                            <td><input type="number" name="quantity_{{ product._id }}" class="quantity-input" value="{{QuantDict[product._id]}}" style="width:30%"></td>
-                        </tr>
-                        {% endfor %}
-                    </table>
+                    <input type="text" class="search-bar" id="product-search" placeholder="Search Products...">
+                    <div class="product-list-container">
+                        <table id="product-list">
+                            {% for product in productsList %}
+                            <tr> 
+                                <td style="width:100%">
+                                    <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}" onchange="toggleQuantityInput(this)" {% if QuantDict[product._id] > 0 %}checked{% endif %} >
+                                    <label for="product_{{ product._id }}">{{ product.name }}</label>
+                                </td>
+                                <td>
+                                    <input type="number" name="quantity_{{ product._id }}" class="quantity-input" value="{{QuantDict[product._id]}}" style="width:60px;display: {% if QuantDict[product._id] > 0 %}block{% else %}none{% endif %}">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
                 </td>
             </tr>
             <tr>
@@ -127,9 +146,10 @@
                                 <input type="hidden" name="priceId" value="{{ hamper.prices[loop_price]._id }}">
                                 <label for="priceName{{ loop_price }}">Price Name:</label>
                                 <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ hamper.prices[loop_price].name }}" required style="width:30%">
-                
+                                <br>
                                 <label for="priceValue{{ loop_price }}">Price Value:  </label>
                                 <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ hamper.prices[loop_price].value }}" required style="width:30%">
+                                <br><br>
                             </div>
                         {% endfor %}
                     </div>                        
@@ -145,6 +165,7 @@
         
     </form>
 </body>
+<!-- Add this section at the end of your script -->
 <script>
     // Set the initial value of priceCounter to the length of existing prices
     var priceCounter = {{ hamper.prices|length }};
@@ -155,10 +176,11 @@
         priceCounter++;
         newPriceField.innerHTML = `
             <label for="priceName${priceCounter}">Price Name:</label>
-            <input type="text" name="priceName" required  style="width:30%">
-
+            <input type="text" name="priceName" required style="width:30%">
+            <br>
             <label for="priceValue${priceCounter}">Price Value:</label>
-            <input type="number" name="priceValue" required  style="width:30%">
+            <input type="number" name="priceValue" required style="width:30%">
+            <br><br>
         `;
 
         pricesContainer.appendChild(newPriceField);
@@ -173,5 +195,63 @@
         }
     }
 
+    function toggleQuantityInput(checkbox) {
+        var quantityInput = checkbox.parentElement.nextElementSibling.querySelector('.quantity-input');
+        quantityInput.style.display = checkbox.checked ? 'block' : 'none';
+
+        // Ensure the quantity input is displayed by default
+        if (checkbox.checked) {
+            quantityInput.style.display = 'block';
+        } else {
+            // If the checkbox is unchecked, hide the quantity input
+            quantityInput.style.display = 'none';
+        }
+    }
+
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var productList = document.getElementById('product-list');
+
+        productList.addEventListener('change', function (event) {
+            var target = event.target;
+
+            if (target.type === 'checkbox') {
+                toggleQuantityInput(target);
+            }
+        });
+
+        // Add this block for filtering products
+        var searchBar = document.getElementById('product-search');
+        var checkbox = document.getElementById('product-checkbox');
+
+        searchBar.addEventListener('input', updateFilter);
+        checkbox.addEventListener('change', updateFilter);
+
+        function updateFilter() {
+            var filter = searchBar.value.toLowerCase();
+            var showCheckedOnly = checkbox.checked;
+
+            // Filter and show/hide list items based on search
+            var listItems = document.querySelectorAll('#product-list tr');
+            listItems.forEach(function (item) {
+                var text = item.textContent.toLowerCase();
+                var itemCheckbox = item.querySelector('input[type="checkbox"]');
+                var isChecked = itemCheckbox ? itemCheckbox.checked : false;
+
+                if (text.includes(filter) && (!showCheckedOnly || isChecked)) {
+                    item.style.display = 'table-row';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Show or hide quantity inputs based on checkbox status
+            var quantityInputs = document.querySelectorAll('#product-list .quantity-input');
+            quantityInputs.forEach(function (input) {
+                input.style.display = 'block';  // Always show quantity inputs
+            });
+        }
+    });
 </script>
+
 {% endblock %}

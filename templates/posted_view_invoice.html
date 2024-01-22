@@ -17,7 +17,6 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            font-size:1em;
             background-color: #f4f4f4;
             margin: 0;
             padding: 0;
@@ -179,14 +178,13 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-
         @media only screen and (max-width: 768px) {
-            body, a.back, input, button, select {
+            body, a.back, input, input[type="submit"], button, select {
                 font-size:2vw;
             }
             /* Adjust styles for smaller screens */
             .center_form, .main-hamper-container, .hamper-detail-container,
-            .order-container, .top, .pagination-controls form button {
+            .order-container, .top, .pagination-controls form button, .top {
                 width: 80%;
             }
 
@@ -196,12 +194,13 @@
 </head>
 <body>  
     <!-- Date selection -->
-    <form action="/viewPOs" method="POST" class="top">
-        <h3>Purchase Orders</h3>
+    <form action="/createInvoice" method="POST" class="top">
+        
+        <h3>Posted Purchase Orders</h3>
         <p>
             Page {{page}} of {{total_pages}} <br>
             {% if target_dates != [] %}
-            Displaying orders from {{target_dates[0]}} to {{target_dates[1]}}
+            Displaying posted orders from {{target_dates[0]}} to {{target_dates[1]}}
             {% endif %}
         </p>
         <label for="viewType">Select view type:</label>
@@ -224,7 +223,7 @@
             <input type="date" id="endDateInput" name="endDate">
         </div>
 
-        <button type="submit">View Orders</button>
+        <button type="submit">View Posted Orders</button>
     </form>
     
     <!-- Order Display -->
@@ -245,10 +244,10 @@
             <tr>
                 <td>{{item['product_name']}}</td>
                 {% if item['discount'] == 0 %}
-                <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
+                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}} (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -272,10 +271,10 @@
             <tr>
                 <td>{{item['hamper_name']}}</td>
                 {% if item['discount'] == 0 %}
-                <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
+                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}}  (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -321,16 +320,15 @@
         </table>
         <div style="text-align: right;">
             <span style="float: left;">&nbsp;</span> 
-            <a href="edit_po/{{po['_id']}}" class="back">Edit</a>
-            <a href="post_po/{{po['_id']}}" class="back">Post</a>
-            <a href="delete_po/{{po['_id']}}" class="back">Delete</a>
+            <a href="createInvoiceFromPosted/{{po['_id']}}" class="back">Create into Invoice</a>
         </div>
         <p>Order ID: {{po['_id']}}</p>
     </div>
     {% endfor %}
     <div class="pagination-controls">
         {% if page > 1 %}
-            <form action="/viewPOs?page={{page-1}}" method="post" style="display:inline-block">
+            <form action="/createInvoice?page={{page-1}}" method="post" style="display:inline-block">
+                <input name="invoiceType" value="old" hidden>
                 <input type="datetime" value="{{target_dates[0]}}"  name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Previous</button>
@@ -338,7 +336,8 @@
         {% endif %}
     
         {% if data | length == 3 and total_pages > 1 %}
-            <form action="/viewPOs?page={{page+1}}" method="post" style="display:inline-block">
+            <form action="/createInvoice?page={{page+1}}" method="post" style="display:inline-block">
+                <input name="invoiceType" value="old" hidden>
                 <input type="datetime" value="{{target_dates[0]}}" name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Next</button>

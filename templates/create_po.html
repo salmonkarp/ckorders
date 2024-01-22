@@ -59,7 +59,9 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-
+        td select option{
+            font-size:14px;
+        }
         input[type="submit"]:hover {
             background-color: #047456;
         }
@@ -68,9 +70,11 @@
             background-color: white;
             height: 200px; /* Adjust the height as needed */
             overflow-y: auto; /* Enable vertical scrolling */
+            border: 1px solid #ccc; /* Add a border to create a bounding box */
+            border-radius: 5px;
         }
         @media only screen and (max-width: 768px) {
-            body, a.back, input, input[type="submit"], button, select {
+            body, a.back, input, input[type="submit"], button, select, label, td, td select option {
                 font-size:2vw;
             }
             /* Adjust styles for smaller screens */
@@ -78,9 +82,14 @@
             .order-container, .top, .pagination-controls form button {
                 width: 80%;
             }
+            input[type="checkbox"], input[type="radio"] {
+                width:3%;
+                height:3%
+            }
 
             /* Add more responsive styles as needed */
         }
+        
     </style>
 </head>
 <body>
@@ -154,7 +163,7 @@
                                         <label>Choose Price</label>
                                     </td>
                                     <td>
-                                        <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="width:100%; font-size: 14px;">
+                                        <select name="{{ product._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ product._id }}_custom_price'))" style="width:100%;">
                                             {% for price in product.prices %}
                                                 <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
                                             {% endfor %}

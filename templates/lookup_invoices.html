@@ -10,7 +10,7 @@
 {% extends 'base_admin.html' %}
 {% endif %}
 
-{% block title %}View POs{% endblock %}
+{% block title %}View Invoices{% endblock %}
 
 {% block content %}
 <head>
@@ -321,16 +321,16 @@
         </table>
         <div style="text-align: right;">
             <span style="float: left;">&nbsp;</span> 
-            <a href="edit_po/{{po['_id']}}" class="back">Edit</a>
-            <a href="post_po/{{po['_id']}}" class="back">Post</a>
-            <a href="delete_po/{{po['_id']}}" class="back">Delete</a>
+            <a href="edit_invoice/{{po['_id']}}" class="back">Edit</a>
+            <a href="archive_invoice/{{po['_id']}}" class="back">Archive</a>
+            <a href="delete_invoice/{{po['_id']}}" class="back">Delete</a>
         </div>
         <p>Order ID: {{po['_id']}}</p>
     </div>
     {% endfor %}
     <div class="pagination-controls">
         {% if page > 1 %}
-            <form action="/viewPOs?page={{page-1}}" method="post" style="display:inline-block">
+            <form action="/viewInvoices?page={{page-1}}" method="post" style="display:inline-block">
                 <input type="datetime" value="{{target_dates[0]}}"  name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Previous</button>

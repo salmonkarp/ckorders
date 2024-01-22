@@ -116,9 +116,10 @@
                                     <input type="hidden" name="priceId" value="{{ product.prices[loop_price]._id }}">
                                     <label for="priceName{{ loop_price }}">Price Name:</label>
                                     <input type="text" id="priceName{{ loop_price }}" name="priceName" value="{{ product.prices[loop_price].name }}" required  style="width:30%">
-                    
+                                    <br>
                                     <label for="priceValue{{ loop_price }}">Price Value:</label>
                                     <input type="number" id="priceValue{{ loop_price }}" name="priceValue" value="{{ product.prices[loop_price].value }}" required  style="width:30%">
+                                    <br>
                                 </div>
                             {% endfor %}
                         </div>                        
@@ -147,9 +148,10 @@
         newPriceField.innerHTML = `
             <label for="priceName${priceCounter}">Price Name:</label>
             <input type="text" name="priceName" required  style="width:30%">
-
+            <br>
             <label for="priceValue${priceCounter}">Price Value:</label>
             <input type="number" name="priceValue" required  style="width:30%">
+            <br>
         `;
 
         pricesContainer.appendChild(newPriceField);

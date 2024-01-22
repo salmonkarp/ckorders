@@ -82,6 +82,24 @@
                 width: 50px;
                 padding: 5px;
             }
+            .product-list-container {
+                max-height: 200px; /* Set the maximum height for the container */
+                overflow-y: auto; /* Enable vertical scrolling if content exceeds the container height */
+                border: 1px solid #ccc; /* Add a border to create a bounding box */
+                border-radius: 5px;
+            }
+            @media only screen and (max-width: 768px) {
+            body, a.back, input, input[type="submit"], button, select {
+                font-size:2vw;
+            }
+            /* Adjust styles for smaller screens */
+            .center_form, .main-hamper-container, .hamper-detail-container,
+            .order-container, .top, .pagination-controls form button {
+                width: 80%;
+            }
+
+            /* Add more responsive styles as needed */
+        }
         </style>
     </head>
     <body>
@@ -95,21 +113,29 @@
                             <td><input type="text" name="hname"></td>
                         </tr>
                         <tr>
-                            <td>Hamper Contents</td>
                             <td>
-                                <table id="product-list">
-                                    {% for product in productsList %}
-                                        <tr class="product-option">
-                                            <td>
-                                                <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
-                                                <label for="product_{{ product._id }}">{{ product.name }}</label>
-                                            </td>
-                                            <td>
-                                                <input type="number" name="quantities_{{ product._id }}" class="quantity-input" value="0" style="display:none; width:30%">
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </table>                          
+                                <p>Hamper Contents <br>
+                                    <label for="product-checkbox" class="filter-checkbox">Show Checked Only</label>
+                                    <input type="checkbox" id="product-checkbox">
+                                </p>
+                            </td>
+                            <td>
+                                <input type="text" class="search-bar" id="product-search" placeholder="Search Products...">
+                                <div class="product-list-container">
+                                    <table id="product-list">
+                                        {% for product in productsList %}
+                                            <tr class="product-option">
+                                                <td>
+                                                    <input type="checkbox" name="products[]" value="{{ product._id }}" id="product_{{ product._id }}">
+                                                    <label for="product_{{ product._id }}">{{ product.name }}</label>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="quantities_{{ product._id }}" class="quantity-input" value="0" style="display:none; width:30%">
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </table>
+                                </div>
                             </td>
                         </tr>
                         <tr>
@@ -175,23 +201,52 @@
                 }
             }
             document.addEventListener('DOMContentLoaded', function () {
-            var productList = document.getElementById('product-list');
+                var productList = document.getElementById('product-list');
 
-            productList.addEventListener('change', function (event) {
-                var target = event.target;
+                productList.addEventListener('change', function (event) {
+                    var target = event.target;
 
-                if (target.type === 'checkbox') {
-                    var quantityInput = target.parentElement.nextElementSibling.querySelector('.quantity-input');
+                    if (target.type === 'checkbox') {
+                        var quantityInput = target.parentElement.nextElementSibling.querySelector('.quantity-input');
 
-                    if (target.checked) {
-                        quantityInput.style.display = 'table-cell';
-                    } else {
-                        quantityInput.style.display = 'none';
+                        if (target.checked) {
+                            quantityInput.style.display = 'block';
+                        } else {
+                            quantityInput.style.display = 'none';
+                        }
                     }
-                }
+                });
             });
-        });
 
+            function filterList(searchBarId, listId, checkboxId) {
+                var searchBar = document.getElementById(searchBarId);
+                var checkbox = document.getElementById(checkboxId);
+
+                searchBar.addEventListener('input', updateFilter);
+                checkbox.addEventListener('change', updateFilter);
+
+                function updateFilter() {
+                    var filter = searchBar.value.toLowerCase();
+                    var showCheckedOnly = checkbox.checked;
+
+                    // Filter and show/hide list items based on search and checkbox
+                    var listItems = document.querySelectorAll('#' + listId + ' .product-option');
+                    listItems.forEach(function (item) {
+                        var text = item.textContent.toLowerCase();
+                        var isChecked = item.querySelector('input[type="checkbox"]').checked;
+
+                        if (text.includes(filter) && (!showCheckedOnly || isChecked)) {
+                            item.style.display = 'table-row';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                }
+            }
+
+            // Apply filtering for products
+            filterList('product-search', 'product-list', 'product-checkbox');
+        
         </script>
     </body>
 {% endblock %}
