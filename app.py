@@ -64,8 +64,7 @@ def send_whatsapp_message(po):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = "bobby"
-
+app.secret_key = os.environ['SECRETKEY']
 
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
@@ -1344,7 +1343,7 @@ def view_invoices():
     return render_template('lookup_invoices.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates)
 
 @app.route('/archive_invoice/<invoiceID>',methods=['GET','POST'])
-@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+@restricted_access(['admin','orderAdmin'])
 def archive_invoice(invoiceID):
     if request.method == 'GET':
         return render_template('archive_invoice_confirm.html', data=invoiceID, user_type = session['role'], poID = invoiceID)
@@ -1451,7 +1450,7 @@ def archive_invoice(invoiceID):
         return redirect('/viewArchived')
     
 @app.route('/viewArchived', methods=['GET','POST'])
-@restricted_access(['admin','invoiceUser','invoiceAdmin'])
+@restricted_access(['admin','invoiceAdmin', 'orderAdmin'])
 def view_archived():
     page = int(request.args.get('page', 1))
     start_index = (page - 1) * 3
@@ -1485,7 +1484,6 @@ def view_archived():
     total_pages = math.ceil(len(filtered_orders)/3.0)
     # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
     return render_template('archived_view_invoice.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
-
 
 @app.route('/print_invoice/<invoiceID>',methods=['GET'])
 @restricted_access(['admin','invoiceAdmin','invoiceUser'])
@@ -1587,7 +1585,10 @@ def print_invoice(invoiceID):
 
         return first_part, second_part
     
-    part1, part2 = split_address(custAdd)
+    if custAdd or custAdd == 'None':
+        part1, part2 = split_address(custAdd)
+    else:
+        part1, part2 = "", ""
         
     labels.append((part1, (12.8 * cm, page_height_cm - 3.4 * cm)))
     labels.append((part2, (12.8 * cm, page_height_cm - 4.1 * cm)))
@@ -2109,6 +2110,144 @@ def view_broken():
     result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
     return render_template('view_broken.html',data = result_sorted, user_type = session['role'])
 
+#ENDGROUP: SUMMARY
+
+####################################################################
+
+#GROUP: ADDITIONAL FEATURES
+@app.route('/managePayments',methods=['GET'])
+@restricted_access(['admin','orderAdmin'])
+def manage_payments():
+    page = int(request.args.get('page', 1))
+    start_index = (page - 1) * 3
+    end_index = start_index + 3
+    
+    orders_collection = MClient['Invoices']
+    products_collection = MClient['Products']
+    hampers_collection = MClient['Hampers']
+    customers_collection = MClient['Customers']
+    
+    result = []
+
+    for order in orders_collection.find():
+        if order['invoiceType'] != 'broken':
+            customer = customers_collection.find_one({'_id': order['custID']})
+            products_data = []
+
+            for product in order.get('products', []):
+                product_doc = products_collection.find_one({'_id': product['product_id']})
+                price_type = product.get('price_type', 'custom')
+                price_value = product['custom_price'] if price_type == 'custom' else next(
+                    (price['value'] for price in product_doc['prices'] if price['name'] == price_type), None
+                )
+                products_data.append({
+                    'product_name': product_doc['name'],
+                    'price_name': price_type,
+                    'price_value': price_value,
+                    'quantity': product.get('quantity'),
+                    'discount': product.get('discount', 0.0)
+                })
+
+            hampers_data = []
+
+            for hamper in order.get('hampers', []):
+                hamper_doc = hampers_collection.find_one({'_id': hamper['product_id']})
+                price_type = hamper.get('price_type', 'custom')
+                price_value = hamper['custom_price'] if price_type == 'custom' else next(
+                    (price['value'] for price in hamper_doc['prices'] if price['name'] == price_type), None
+                )
+                hampers_data.append({
+                    'hamper_name': hamper_doc['name'],
+                    'price_name': price_type,
+                    'price_value': price_value,
+                    'quantity': hamper.get('quantity'),
+                    'discount': hamper.get('discount', 0.0)
+                })
+
+            result.append({
+                '_id': order['_id'],
+                'customer_name': customer['name'],
+                'customer_address': customer['address'],
+                'deliveryDate': order['deliveryDate'],
+                'products': products_data,
+                'hampers': hampers_data,
+                'orderDiscount': order.get('orderDiscount', 0.0),
+                'paidAmount':order.get('paidAmount',0.0)
+            })
+        else:
+            for product in order['items']:
+                product['product_name'] = product['name']
+                product['price_name'] = 'custom'
+            result.append({
+                '_id': order['_id'],
+                'customer_name': order['customer_name'],
+                'customer_address': order['customer_address'],
+                'deliveryDate': order['deliveryDate'],
+                'products': order['items'],
+                'hampers': [],
+                'orderDiscount': order.get('orderDiscount', 0.0),
+                'paidAmount':order.get('paidAmount',0.0)
+            })
+
+    # calculating order total :/
+    for order in result:
+        order['order_total'] = calculate_order_total(order)
+    result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
+    
+    # for specific date handling
+    target_dates = []
+    if request.method=='POST':
+        if request.form.get('specificDate'):
+            target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('startDate'):
+            target_dates = [request.form.get('startDate'),request.form.get('endDate')]
+            filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        else:
+            filtered_orders = result_sorted
+    else:
+        filtered_orders = result_sorted
+    
+    # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
+    print(len(filtered_orders))
+    total_pages = math.ceil(len(filtered_orders) / 3.0)
+    return render_template('manage_payments.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates)
+
+@app.route('/managePaymentsEdit/<poID>',methods=['POST'])
+@restricted_access(['admin','orderAdmin'])
+def edit_payment(poID):
+    if request.form.get('access','') == 'get':
+        total = request.form.get('final_total')
+        paid_amount = request.form.get('paid_amount',0.0)
+        data = {
+            '_id':poID,
+            'total':total,
+            'paid_amount':paid_amount
+        }
+        print(data)
+        return render_template('manage_payment_edit.html',data=data,user_type = session['role'])
+    else:
+        if request.form.get('isFullyPaid'):
+            MClient['Invoices'].update_one({'_id':ObjectId(poID)},{
+                '$set':{
+                    'paidAmount':float(request.form.get('total'))
+                }
+            })
+            return redirect(f'/archive_invoice/{poID}')
+        
+        paid_amount = request.form.get('paid_amount')
+        print(paid_amount, 'paid_amount')
+        if not paid_amount:
+            return redirect('/managePayments')
+        MClient['Invoices'].update_one({'_id':ObjectId(poID)},{
+            '$set':{
+                'paidAmount':float(paid_amount)
+            }
+        })
+        if request.form.get('isFullyPaid'):
+            return redirect(f'/archive_invoice/{poID}')
+        else:
+            return redirect('/managePayments')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

@@ -135,7 +135,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        a.back{
+        .back{
             text-decoration: none;
             background-color: #04AA6D;
             color: #fff;
@@ -143,9 +143,10 @@
             border-radius: 5px;
             font-size: 16px;
             transition: background-color 0.3s;
+            border:none
         }
 
-        a.back:hover{
+        .back:hover{
             background-color: #038f5c;
         }
         
@@ -196,12 +197,12 @@
 </head>
 <body>  
     <!-- Date selection -->
-    <form action="/viewPOs" method="POST" class="top">
-        <h3>Purchase Orders</h3>
+    <form action="/viewInvoices" method="POST" class="top">
+        <h3>Active Invoices</h3>
         <p>
             Page {{page}} of {{total_pages}} <br>
             {% if target_dates != [] %}
-            Displaying orders from {{target_dates[0]}} to {{target_dates[1]}}
+            Displaying invoices from {{target_dates[0]}} to {{target_dates[1]}}
             {% endif %}
         </p>
         <label for="viewType">Select view type:</label>
@@ -209,22 +210,26 @@
             <option value="" disabled selected>Select an option</option>
             <option value="specificDate">View from specific date</option>
             <option value="dateRange">View from date range</option>
-            <option value="allOrders">Display all orders</option>
+            <option value="allOrders">Display all invoices</option>
         </select>
 
         <div id="specificDate" style="display: none;">
+            <br>
             <label for="specificDateInput">Enter specific date:</label>
             <input type="date" id="specificDateInput" name="specificDate">
         </div>
 
         <div id="dateRange" style="display: none;">
+            <br>
             <label for="startDateInput">Start Date:</label>
             <input type="date" id="startDateInput" name="startDate">
+            <br>
             <label for="endDateInput">End Date:</label>
-            <input type="date" id="endDateInput" name="endDate">
+            <input type="date" id="endDateInput" name="endDate" style="margin-left:5px">
         </div>
 
-        <button type="submit">View Orders</button>
+        <br><br>
+        <button type="submit" class="back">View Invoices</button>
     </form>
     
     <!-- Order Display -->
@@ -322,10 +327,10 @@
         <div style="text-align: right;">
             <span style="float: left;">&nbsp;</span> 
             <a href="edit_invoice/{{po['_id']}}" class="back">Edit</a>
-            <a href="archive_invoice/{{po['_id']}}" class="back">Archive</a>
+            <a href="print_invoice/{{po['_id']}}" class="back">Print</a>
             <a href="delete_invoice/{{po['_id']}}" class="back">Delete</a>
         </div>
-        <p>Order ID: {{po['_id']}}</p>
+        <p>Invoice ID: {{po['_id']}}</p>
     </div>
     {% endfor %}
     <div class="pagination-controls">
@@ -338,7 +343,7 @@
         {% endif %}
     
         {% if data | length == 3 and total_pages > 1 %}
-            <form action="/viewPOs?page={{page+1}}" method="post" style="display:inline-block">
+            <form action="/viewInvoices?page={{page+1}}" method="post" style="display:inline-block">
                 <input type="datetime" value="{{target_dates[0]}}" name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Next</button>

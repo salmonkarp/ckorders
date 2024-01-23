@@ -30,6 +30,10 @@ nav ul li:last-child{
     float:right;
 }
 
+nav ul li#other{
+    float:right;
+}
+
 /* Change the link color to #111 (black) on hover */
 li a:hover {
 background-color: #111;

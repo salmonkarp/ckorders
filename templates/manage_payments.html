@@ -10,13 +10,14 @@
 {% extends 'base_admin.html' %}
 {% endif %}
 
-{% block title %}View Invoices{% endblock %}
+{% block title %}Manage Payments{% endblock %}
 
 {% block content %}
 <head>
     <style>
         body {
             font-family: 'Arial', sans-serif;
+            font-size:1em;
             background-color: #f4f4f4;
             margin: 0;
             padding: 0;
@@ -142,7 +143,7 @@
             border-radius: 5px;
             font-size: 16px;
             transition: background-color 0.3s;
-            border:none;
+            border:none
         }
 
         .back:hover{
@@ -179,13 +180,14 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
         @media only screen and (max-width: 768px) {
-            body, a.back, input, input[type="submit"], button, select {
+            body, a.back, input, button, select {
                 font-size:2vw;
             }
             /* Adjust styles for smaller screens */
             .center_form, .main-hamper-container, .hamper-detail-container,
-            .order-container, .top, .pagination-controls form button, .top {
+            .order-container, .top, .pagination-controls form button {
                 width: 80%;
             }
 
@@ -195,8 +197,8 @@
 </head>
 <body>  
     <!-- Date selection -->
-    <form action="/viewArchived" method="POST" class="top">
-        <h3>Archived Invoices</h3>
+    <form action="/managePayments" method="POST" class="top">
+        <h3>Active Invoices</h3>
         <p>
             Page {{page}} of {{total_pages}} <br>
             {% if target_dates != [] %}
@@ -223,10 +225,11 @@
             <input type="date" id="startDateInput" name="startDate">
             <br>
             <label for="endDateInput">End Date:</label>
-            <input type="date" id="endDateInput" name="endDate"  style="margin-left:5px">
+            <input type="date" id="endDateInput" name="endDate" style="margin-left:5px">
         </div>
-        <br> <br>
-        <button type="submit" class="back">View Archived Invoices</button>
+
+        <br><br>
+        <button type="submit" class="back">View Invoices</button>
     </form>
     
     <!-- Order Display -->
@@ -247,10 +250,10 @@
             <tr>
                 <td>{{item['product_name']}}</td>
                 {% if item['discount'] == 0 %}
-                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
+                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}} (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -274,10 +277,10 @@
             <tr>
                 <td>{{item['hamper_name']}}</td>
                 {% if item['discount'] == 0 %}
-                <td>{{item['price_value'] | format_currency}}   ({{item['price_type']}})</td>
+                <td>{{item['price_value'] | format_currency}}   ({{item['price_name']}})</td>
                 {% else %}
                 <td>
-                    {{item['price_value'] | format_currency}}   ({{item['price_type']}}) <br>
+                    {{item['price_value'] | format_currency}}   ({{item['price_name']}}) <br>
                     - {{(item['discount'] * item['price_value'] / 100) | format_currency}}  (Discount {{item['discount']}}%)<br>
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
@@ -303,6 +306,7 @@
                     <td colspan="3" style="text-align: right; padding-right:5px">Total: </td>
                     <td>
                         {{ po['order_total'] | format_currency }} 
+                        {% set final_total = po['order_total'] %}
                     </td>
                 </tr>
                 {% if po['orderDiscount'] > 0 %}
@@ -316,17 +320,29 @@
                     <td colspan="3" style="text-align: right; padding-right:5px">Final Total:</td>
                     <td>
                         {{ (po['order_total'] - (po['orderDiscount'] * po['order_total'] * 0.01)) | format_currency }} 
+                        {% set final_total = (po['order_total'] - (po['orderDiscount'] * po['order_total'] * 0.01)) %}
                     </td>
                 </tr>
                 {% endif %}
             </tfoot>
         </table>
-        <p>Order ID: {{po['_id']}}</p>
+        <div style="text-align: right;">
+            <span style="float: left;">&nbsp;</span> 
+            <form action="/managePaymentsEdit/{{po['_id']}}" method="post" enctype="multipart/form-data">
+                <input type="number" value="{{final_total}}" name="final_total" hidden>
+                <input value="get" name="access" hidden>
+                <input type="number" value="{{po['paidAmount']}}" name="paid_amount" hidden>
+                <input type="submit" class="back" value="Manage Payments">
+            </form>
+        </div>
+        <p>Invoice ID: {{po['_id']}} <br>
+            Paid Amount: {{po['paidAmount'] | format_currency}}
+        </p>
     </div>
     {% endfor %}
     <div class="pagination-controls">
         {% if page > 1 %}
-            <form action="/viewArchived?page={{page-1}}" method="post" style="display:inline-block">
+            <form action="/managePayments?page={{page-1}}" method="post" style="display:inline-block">
                 <input type="datetime" value="{{target_dates[0]}}"  name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Previous</button>
@@ -334,7 +350,7 @@
         {% endif %}
     
         {% if data | length == 3 and total_pages > 1 %}
-            <form action="/viewArchived?page={{page+1}}" method="post" style="display:inline-block">
+            <form action="/managePayments?page={{page+1}}" method="post" style="display:inline-block">
                 <input type="datetime" value="{{target_dates[0]}}" name='startDate' hidden>
                 <input type="datetime" value="{{target_dates[1]}}" name='endDate' hidden>
                 <button type="submit">Next</button>
