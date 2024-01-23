@@ -107,8 +107,8 @@
             {% endfor %}
         </table>
         <form action="/view_broken" method="post" enctype="multipart/form-data">
-            <button type="submit" class="back">View Broken Orders</button>
-            <input value="{{broken_orders}}" hidden>
+            <button type="submit" class="back">View Broken Orders</button> <br>
+            <input value="{{broken_orders}}" name = "broken_orders" hidden>
         </form>
         <a href="/summary" class="back">Back</a>
     </div>

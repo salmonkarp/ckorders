@@ -64,7 +64,7 @@ def send_whatsapp_message(po):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = os.environ['SECRETKEY']
+app.secret_key = "bobby"
 
 
 database_key = os.environ["MONGOKEY"]
