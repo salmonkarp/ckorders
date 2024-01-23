@@ -64,7 +64,10 @@ def send_whatsapp_message(po):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = os.environ['SECRETKEY']
+app.secret_key = "bobby"
+os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+os.environ["TELEGRAM_API_KEY"] = "6926369218:AAFX6xFgIk6Wzt4K0-q-dDozOts0QCvjIx0"
+os.environ["MONGOKEY"] = "8EGuh1hHtHosYg5U"
 
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
@@ -1097,7 +1100,7 @@ def create_invoice_from_posted(postedID):
             # successful conversion, then insert to invoices
             MClient['Invoices'].insert_one(invoice_object)
             invoiceID = dict(MClient['Invoices'].find_one({'po_id':ObjectId(postedID)}))['_id']
-            MClient['PostedPOs'].update_one({'_id':postedID},{
+            MClient['PostedPOs'].update_one({'_id':ObjectId(postedID)},{
                 '$set':{
                     'wasConverted':True
                 }
@@ -1107,7 +1110,7 @@ def create_invoice_from_posted(postedID):
         # handling of failed conversion -> use manual input
         except Exception as e:
             print(e)
-            MClient['PostedPOs'].update_one({'_id':postedID},{
+            MClient['PostedPOs'].update_one({'_id':ObjectId(postedID)},{
                 '$set':{
                     'wasConverted':True
                 }
