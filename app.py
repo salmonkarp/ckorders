@@ -64,10 +64,7 @@ def send_whatsapp_message(po):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = "bobby"
-os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-os.environ["TELEGRAM_API_KEY"] = "6926369218:AAFX6xFgIk6Wzt4K0-q-dDozOts0QCvjIx0"
-os.environ["MONGOKEY"] = "8EGuh1hHtHosYg5U"
+app.secret_key = os.environ['SECRETKEY']
 
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
