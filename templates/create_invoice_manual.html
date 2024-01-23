@@ -108,11 +108,11 @@
                 <table>
                     <tr>
                         <td style="width:50%">Customer Name</td>
-                        <td><input type="text" name="customer_name" value="{{ data.customer_name }}"> <br></td>
+                        <td><input type="text" name="customer_name" value="{{ data.customer_name }}" required> <br></td>
                     </tr>
                     <tr>
                         <td>Customer Address</td>
-                        <td><input type="text" name="customer_address" value="{{ data.customer_address }}"> <br></td>
+                        <td><input type="text" name="customer_address" value="{{ data.customer_address }}" required> <br></td>
                     </tr>
                 </table>
             </div>
@@ -121,11 +121,11 @@
                 <table>
                     <tr>
                         <td style="width:50%">Delivery Date</td>
-                        <td><input type="date" name="deliveryDate" value="{{ data.deliveryDate }}" style="width:80%"></td>
+                        <td><input type="date" name="deliveryDate" value="{{ data.deliveryDate }}" style="width:80%" required></td>
                     </tr>
                     <tr>
                         <td>Order Discount (in %)</td>
-                        <td><input type="number" value="{{data['orderDiscount']}}" name="orderDiscount"></td>
+                        <td><input type="number" value="{{data['orderDiscount']}}" name="orderDiscount" required></td>
                     </tr>
                 </table>
             </div>

@@ -62,14 +62,16 @@
 <body> 
     <!-- Date selection -->
     <form action="/summary" method="POST">
+        <h3>Summary of Archived Invoices</h3>
         <table>
             <tr>
-                <td><label for="viewType">Select summary:</label></td>
+                <td><label for="viewType">Select summary type:</label></td>
                 <td>
                     <select id="viewType" name="viewType" required>
                         <option value="" disabled selected>Select an option</option>
-                        <option value="productSort">Upcoming PO Summary (by product)</option>
-                        <option value="customerSort">Archived PO Summary (by consumer)</option>
+                        <option value="productSort">Sort by product (separate from hampers)</option>
+                        <option value="productSortCombined">Sort by product (combine with hampers)</option>
+                        <option value="customerSort">Sort by customer</option>
                     </select>
                 </td>
             </tr>

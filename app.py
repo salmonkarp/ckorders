@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, session, url_for, flash, get_flashed_messages
-from openpyxl import load_workbook
 from dotenv import load_dotenv
 from flask_cors import CORS
 from bson.objectid import ObjectId
@@ -8,15 +7,12 @@ import pprint, os, pymongo, sqlite3
 from babel.numbers import format_currency as fcrr
 from babel.dates import format_date, format_datetime, format_time
 from babel import Locale
-import base64
+import base64, math, os, requests
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Table, TableStyle, Paragraph
-import math
-import os
-import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -68,7 +64,8 @@ def send_whatsapp_message(po):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = os.environ["SECRETKEY"]
+app.secret_key = os.environ['SECRETKEY']
+
 
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
@@ -1680,6 +1677,7 @@ def print_invoice(invoiceID):
     return render_template('print_invoice.html',encoded_content = encoded_pdf_content, user_type = session['role'], invoiceID = invoiceID)
 
 @app.route('/edit_invoice/<poID>',methods=['GET'])
+@restricted_access(['admin','invoiceAdmin','invoiceUser'])
 def edit_invoice(poID):
     order_data = dict(MClient['Invoices'].find_one({'_id':ObjectId(poID)}))
     if order_data['invoiceType'] != 'broken':
@@ -1732,6 +1730,7 @@ def edit_invoice(poID):
         return render_template("edit_invoice_manual.html",data = order_data, user_type = session['role'])
 
 @app.route('/edit_invoice_submit',methods=['POST'])
+@restricted_access(['admin','invoiceAdmin','invoiceUser'])
 def edit_invoice_submit():
     poID = request.form.get('invoiceID')
     order_data = dict(MClient['Invoices'].find_one({'_id':ObjectId(poID)}))
@@ -1879,7 +1878,13 @@ def edit_invoice_submit():
             })
         MClient['Invoices'].update_many({'_id':ObjectId(poID)},{'$set':order_object})
         return redirect(f'/print_invoice/{poID}')
-        
+      
+@app.route('/delete_invoice/<invoiceID>',methods=['GET'])
+@restricted_access(['admin','invoiceAdmin','invoiceUser'])
+def delete_invoice(invoiceID):
+    MClient['Invoices'].delete_one({'_id':ObjectId(invoiceID)})
+    return redirect('/viewInvoices')
+
 #ENDGROUP
 
 ###################################################################
@@ -1889,7 +1894,7 @@ def edit_invoice_submit():
 @restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def summary():
     if request.method == "GET":
-        return render_template('summary.html')
+        return render_template('summary.html', user_type = session['role'])
     else:
         startDate = request.form.get('startDate')
         endDate = request.form.get('endDate')
@@ -1897,9 +1902,9 @@ def summary():
         ProductsDataRaw = MClient['Products']
         HampersData = MClient['Hampers']
         
-        # sorting by products
-        if request.form.get('viewType') == 'productSort':
-            OrderData = MClient['POs'].find(
+        # sorting by products, combined with hampers
+        if request.form.get('viewType') == 'productSortCombined':
+            OrderData = MClient['ArchivedInvoices'].find(
                 {
                     'deliveryDate':{
                         '$gte':startDate,
@@ -1910,18 +1915,22 @@ def summary():
             ProductsData = ProductsDataRaw.find()
             product_totals = {}
             customers_list = []
+            broken_orders = []
             order_count = 0
             for order in OrderData:
                 order_count += 1
+                if order['invoiceType'] == 'broken':
+                    broken_orders.append(order)
+                    continue
                 customer_data = dict(CustomersData.find_one({'_id':order['custID']}))
                 if customer_data['name'] not in customers_list:
                     customers_list.append(customer_data['name'])
                 for product in order.get('products',[]):
-                    product_id = str(product['product_id'])
+                    product_id = str(product['_id'])
                     quantity = product['quantity']
                     product_totals[product_id] = product_totals.get(product_id, 0) + quantity
                 for hamper in order.get('hampers',[]):
-                    hamper_id = str(hamper['product_id'])
+                    hamper_id = str(hamper['_id'])
                     hamper_quantity = hamper['quantity']
                     hamper_details = HampersData.find_one({'_id':ObjectId(hamper_id)})
                     
@@ -1952,13 +1961,72 @@ def summary():
             
             additional_details = {
                 "order_count" : order_count,
-                "customers_list":customers_list
+                "customers_list":customers_list,
+                "broken_orders":broken_orders
             }
-            return render_template('summary_product.html',data=summary_data, startDate = startDate, endDate = endDate, additional_details = additional_details)
+            return render_template('summary_product.html',data=summary_data, startDate = startDate, endDate = endDate, additional_details = additional_details, user_type = session['role'])
         
+        # sorting by products, separate from hampers
+        elif request.form.get('viewType') == 'productSort':
+            OrderData = MClient['ArchivedInvoices'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            )
+            ProductsData = ProductsDataRaw.find()
+            product_totals = {}
+            customers_list = []
+            order_count = 0
+            broken_orders = []
+            for order in OrderData:
+                order_count += 1
+                if order['invoiceType'] == 'broken':
+                    broken_orders.append(order)
+                    continue
+                customer_data = dict(CustomersData.find_one({'_id':order['custID']}))
+                if customer_data['name'] not in customers_list:
+                    customers_list.append(customer_data['name'])
+                
+                for product in order.get('products',[]):
+                    product_id = str(product['_id'])
+                    quantity = product['quantity']
+                    product_totals[product_id] = product_totals.get(product_id, 0) + quantity
+                
+                for hamper in order.get('hampers',[]):
+                    hamper_id = str(hamper['_id'])
+                    hamper_quantity = hamper['quantity']
+                    product_totals[hamper_id] = product_totals.get(hamper_id, 0) + hamper_quantity
+                        
+            print(product_totals)
+            summary_data = []
+            for product in list(ProductsData) + list(HampersData.find()):
+                product_id = str(product['_id'])
+                product_name = product['name']
+                total_quantity = product_totals.get(product_id,0)
+                if total_quantity <= 0:
+                    continue
+                summary_data.append(
+                    {
+                        'name':product_name,
+                        'total_quantity':total_quantity,
+                        'current_stock':product.get('currentStock',0)
+                    }
+                )
+            print(summary_data)
+            
+            additional_details = {
+                "order_count" : order_count,
+                "customers_list":customers_list,
+                "broken_orders":broken_orders
+            }
+            return render_template('summary_product.html',data=summary_data, startDate = startDate, endDate = endDate, additional_details = additional_details, user_type = session['role'])
+         
         # sort by customer, archived
         else:
-            OrderData = MClient['ArchivedPOs'].find(
+            OrderData = MClient['ArchivedInvoices'].find(
                 {
                     'deliveryDate':{
                         '$gte':startDate,
@@ -1970,7 +2038,11 @@ def summary():
             ProductsData = ProductsDataRaw.find()
                 
             # calculating quantities of products and hampers (seperately) for each customer
+            broken_orders = []
             for order in OrderData:
+                if order['invoiceType'] == 'broken':
+                    broken_orders.append(order)
+                    continue
                 customer_key = str(order['custID']) + order['customer_name']
                 tmp_order_total = 0.0
                 
@@ -2017,9 +2089,25 @@ def summary():
             customer_totals = sorted(customer_totals, key=lambda x:x[1]['total_spent'], reverse=True)
             for customer in customer_totals:
                 customer[1]['products_quantity'] = dict(sorted(customer[1]['products_quantity'].items(), key=lambda x:x[1], reverse=True))
-            return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate)
+            
+            return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate, user_type = session['role'], broken_orders = broken_orders)
         
-    
+@app.route('/view_broken',methods=["POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def view_broken():
+    broken_orders = eval(request.form.get('broken_orders'))
+    print(broken_orders)
+    result = broken_orders
+    for order in result:
+        if order['invoiceType'] == 'broken':
+            order['products'] = order['items']
+            order['hampers'] = []
+            for item in order['products']:
+                item['product_name'] = item['name']
+                item['price_type'] = 'custom'
+        order['order_total'] = calculate_order_total(order)
+    result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
+    return render_template('view_broken.html',data = result_sorted, user_type = session['role'])
 
 
 @app.route('/login', methods=['GET', 'POST'])

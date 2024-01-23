@@ -52,7 +52,7 @@
             padding: 12px;
             text-align: left;
         }
-        a.back{
+        a.back, button.back{
             text-decoration: none;
             background-color: #04AA6D;
             color: #fff;
@@ -60,10 +60,11 @@
             border-radius: 5px;
             font-size: 16px;
             transition: background-color 0.3s;
+            border:none
         }
 
-        a.back:hover{
-            background-color: #04AA6D;
+        a.back:hover, button.back:hover{
+            background-color: #028b59;
         }
     </style>
 </head>
@@ -105,6 +106,10 @@
             </tr>
             {% endfor %}
         </table>
+        <form action="/view_broken" method="post" enctype="multipart/form-data">
+            <button type="submit" class="back">View Broken Orders</button>
+            <input value="{{broken_orders}}" hidden>
+        </form>
         <a href="/summary" class="back">Back</a>
     </div>
 </body>

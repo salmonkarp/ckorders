@@ -100,30 +100,31 @@
 
             <!-- Choose from either product or hampers -->
             <label>
-                <input type="radio" name="customer-type" value="new" onclick="showOptions('new')" required> New Customer
+                <input type="radio" name="customer-type" value="new" onclick="showOptions('new'); toggleInput(this, 'customer_name', 'address')" required> New Customer
             </label>
             <label>
-                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')" required> Existing Customer
-            </label> <br>
-
+                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing'); toggleInput(this, 'existing_customer_id')" required> Existing Customer
+            </label>
+            <br>
+        
             <!-- New Customer Option -->
             <div class="additional-options" id="new-options">
                 <table style="width:100%">
                     <tr>
                         <td>Customer Name</td>
-                        <td><input type="text" name="customer_name"></td>
+                        <td><input type="text" name="customer_name" class="conditionalInput"></td>
                     </tr>
                     <tr>
                         <td>Delivery Address</td>
-                        <td><input type="text" name="address"></td>
+                        <td><input type="text" name="address" class="conditionalInput"></td>
                     </tr>
                 </table>
             </div>
-
+        
             <!-- Existing Customer Option -->
             <div class="additional-options" id="existing-options">
                 <label for="existing_customer_id">Select existing customer:</label>
-                <select name="existing_customer_id">
+                <select name="existing_customer_id" id="conditionalInput">
                     <option value="">-- Select existing customer --</option>
                     {% for customer in customersList %}
                         <option value="{{ customer._id }}">{{ customer.name }}</option>
@@ -242,6 +243,16 @@
     </form>
 </body>
 <script>
+    function toggleInput(radio, ...inputNames) {
+        // Get all input elements within the form
+        var inputElements = document.querySelectorAll('form input[type="text"], form select');
+
+        // Set 'required' attribute based on the selected radio button
+        for (var i = 0; i < inputElements.length; i++) {
+            inputElements[i].required = inputNames.includes(inputElements[i].name) && radio.checked;
+        }
+    }
+
     // to show options of new or existing customer
     function showOptions(customerType) {
         // Hide all additional options initially

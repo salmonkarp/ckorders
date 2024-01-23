@@ -113,11 +113,12 @@
             
             <!-- Choose from either product or hampers -->
             <label>
-                <input type="radio" name="customer-type" value="new" onclick="showOptions('current')" checked> Modify Current Customer
+                <input type="radio" name="customer-type" value="new" onclick="showOptions('current'); toggleInput(this, 'customer_name', 'address')" required> Edit Current Customer
             </label>
             <label>
-                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')" > Move to Existing Customer
+                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing'); toggleInput(this, 'existing_customer_id')" required> Move to Existing Customer
             </label>
+            <br>
 
             <!-- Modify Current Customer -->
             <div class="additional-options" id="current-options" style="display:block">
@@ -265,6 +266,15 @@
     </form>
 </body>
 <script>
+    function toggleInput(radio, ...inputNames) {
+        // Get all input elements within the form
+        var inputElements = document.querySelectorAll('form input[type="text"], form select');
+
+        // Set 'required' attribute based on the selected radio button
+        for (var i = 0; i < inputElements.length; i++) {
+            inputElements[i].required = inputNames.includes(inputElements[i].name) && radio.checked;
+        }
+    }
     document.addEventListener('DOMContentLoaded', function() {
         var checkboxes = document.querySelectorAll('.checkboxClass');
         checkboxes.forEach(function(checkbox) {

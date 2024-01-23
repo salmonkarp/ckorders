@@ -52,7 +52,7 @@
             padding: 12px;
             text-align: left;
         }
-        a.back{
+        a.back, button.back{
             text-decoration: none;
             background-color: #04AA6D;
             color: #fff;
@@ -60,20 +60,21 @@
             border-radius: 5px;
             font-size: 16px;
             transition: background-color 0.3s;
+            border:none
         }
 
-        a.back:hover{
-            background-color: #04AA6D;
+        a.back:hover, button.back:hover{
+            background-color: #048556;
         }
     </style>
 </head>
 <body>
     <div class="order-container">
-        <h3>Upcoming PO Summary (by product)</h3>
+        <h3>Archived Invoice Summary (by product)</h3>
         <p>
             Start Date: {{startDate}} <br>
             End Date: {{endDate}} <br>
-            Order Count: {{additional_details['order_count']}} <br>
+            Order Count: {{additional_details['order_count']}} ({{additional_details['broken_orders'] | length}} broken.)<br>
             Customers: 
             {%for item in additional_details['customers_list'] %}
             {% if not loop.last %}{{item}}, 
@@ -85,15 +86,15 @@
             <tr>
                 <th>Product Name</th>
                 <th>Quantity</th>
-                <th>Current Stock</th>
-                <th>Status</th>
+                <!-- <th>Current Stock</th> -->
+                <!-- <th>Status</th> -->
             </tr>
             {% for item in data %}
             {% if item['total_quantity'] != 0 %}
             <tr>
                 <td>{{ item['name']}} </td>
                 <td>{{ item['total_quantity']}} </td>
-                <td>{{ item['current_stock'] }}</td>
+                <!-- <td>{{ item['current_stock'] }}</td>
                 <td>
                     {% set remaining = item['current_stock'] - item['total_quantity'] %}
                     {% if remaining < 0 %}
@@ -101,11 +102,16 @@
                     {% else %}
                     {{ remaining }} remaining.
                     {% endif %}
-                </td>
+                </td> -->
             </tr>
             {% endif %}
             {% endfor %}
         </table>
+        <form action="/view_broken" method="post" enctype="multipart/form-data">
+            <button type="submit" class="back">View Broken Orders</button>
+            <input type="hidden" name="broken_orders" value="{{additional_details['broken_orders']}}" hidden>
+        </form>
+        <br>
         <a href="/summary" class="back">Back</a>
     </div>
 </body>

@@ -99,11 +99,12 @@
 
             <!-- Choose from either product or hampers -->
             <label>
-                <input type="radio" name="customer-type" value="new" onclick="showOptions('new')" required> New Customer
+                <input type="radio" name="customer-type" value="new" onclick="showOptions('new'); toggleInput(this, 'customer_name', 'address')" required> New Customer
             </label>
             <label>
-                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing')" required> Existing Customer
-            </label> <br>
+                <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing'); toggleInput(this, 'existing_customer_id')" required> Existing Customer
+            </label>
+            <br>
 
             <!-- New Customer Option -->
             <div class="additional-options" id="new-options">
@@ -241,6 +242,15 @@
     </form>
 </body>
 <script>
+    function toggleInput(radio, ...inputNames) {
+        // Get all input elements within the form
+        var inputElements = document.querySelectorAll('form input[type="text"], form select');
+
+        // Set 'required' attribute based on the selected radio button
+        for (var i = 0; i < inputElements.length; i++) {
+            inputElements[i].required = inputNames.includes(inputElements[i].name) && radio.checked;
+        }
+    }
     // to show options of new or existing customer
     function showOptions(customerType) {
         // Hide all additional options initially
