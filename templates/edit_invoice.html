@@ -179,7 +179,7 @@
                             <table>
                                 <tr>
                                     <td>Quantity</td>
-                                    <td><input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;" value="{{product['quantity_in_order']}}"></td>
+                                    <td><input type="number" name="p_quantities_{{ product._id }}" class="quantity-input" style="display: none;" value="{{product['quantity_in_order']}}"   step="any"></td>
                                 </tr>
                                 <tr>
                                     <td>Choose Price</td>
@@ -204,7 +204,7 @@
                                 <tr>
                                     <td>Product Discount (in %)</td>
                                     <td>
-                                        <input type="number" name="{{ product._id }}_product_discount" value="0" min="0">
+                                        <input type="number" name="{{ product._id }}_product_discount" value="{{product['discount_in_order']}}" min="0">
                                     </td>
                                 </tr>
                             </table>
@@ -228,7 +228,7 @@
                             <table>
                                 <tr>
                                     <td>Quantity</td>
-                                    <td><input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" style="display: none;" value="{{hamper['quantity_in_order']}}"></td>
+                                    <td><input type="number" name="h_quantities_{{ hamper._id }}" class="quantity-input" style="display: none;" value="{{hamper['quantity_in_order']}}"   step="any"></td>
                                 </tr>
                                 <tr>
                                     <td>Choose Price</td>
@@ -252,7 +252,7 @@
                                 </tr>
                                 <tr>
                                     <td>Hamper Discount (in %)</td>
-                                    <td><input type="number" name="{{ hamper._id }}_hamper_discount" value="0" min="0"></td>
+                                    <td><input type="number" name="{{ hamper._id }}_hamper_discount" value="{{hamper['discount_in_order']}}" min="0"></td>
                                 </tr>
                             </table>
                         </div>

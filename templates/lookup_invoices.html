@@ -272,7 +272,13 @@
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
                 {% endif %}
-                <td>{{item['quantity']}}</td>
+                <td>
+                    {% if item['quantity'] | round  == item['quantity'] %}
+                    {{item['quantity'] | round}}
+                    {% else %}
+                    {{item['quantity']}}
+                    {% endif %}
+                </td>
                 {% if item['discount'] == 0 %}
                 <td>
                     {% set subtotal = item['quantity'] * item['price_value'] %}
@@ -299,7 +305,13 @@
                     = {{(item['price_value'] - (item['discount'] * item['price_value'] / 100)) | format_currency}}
                 </td>
                 {% endif %}
-                <td>{{item['quantity']}}</td>
+                <td>
+                    {% if item['quantity'] | round == item['quantity'] %}
+                    {{item['quantity'] | round}}
+                    {% else %}
+                    {{item['quantity']}}
+                    {% endif %}
+                </td>
                 {% if item['discount'] == 0 %}
                 <td>
                     {% set subtotal = item['quantity'] * item['price_value'] %}
