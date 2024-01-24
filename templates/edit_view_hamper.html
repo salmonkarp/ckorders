@@ -173,7 +173,7 @@
         <div class="additional-options" id="hampers-options">
             
             {% for hamper in hampersList %}
-                <div class="main-hamper-container" style="width:100%">
+                <div class="main-hamper-container">
                     <div class="hamper-detail-container">
                         <div style='font-weight:bold'>Name: {{ hamper.name }} </div>
                         <a href="/edit_hampers/{{hamper['_id']}}" class="add">Edit </a>
