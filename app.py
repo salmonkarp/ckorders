@@ -29,6 +29,10 @@ def filter_orders_by_dates(orders, target_dates):
     startDate = datetime.strptime(target_dates[0],'%Y-%m-%d')
     endDate = datetime.strptime(target_dates[1],'%Y-%m-%d')
     return [order for order in orders if datetime.strptime(order['deliveryDate'],'%Y-%m-%d') >= startDate and datetime.strptime(order['deliveryDate'],'%Y-%m-%d') <= endDate]
+def filter_orders_by_customer(orders,customerID):
+    print(customerID)
+    print(orders)
+    return [order for order in orders if ObjectId(customerID) == order.get('custID',None)]
 def calculate_order_total(po):
     order_total = 0.0
     for product in po['products'] + po['hampers']:
@@ -64,8 +68,7 @@ def send_whatsapp_message(po):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = os.environ['SECRETKEY']
-
+app.secret_key = os.environ["SECRETKEY"]
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 MClient = pymongo.MongoClient(MCString)['CK']
@@ -602,6 +605,7 @@ def lookup():
 
         result.append({
             '_id': order['_id'],
+            'custID': order['custID'],
             'customer_name': customer['name'],
             'customer_address': customer['address'],
             'deliveryDate': order['deliveryDate'],
@@ -617,6 +621,7 @@ def lookup():
     
     # for specific date handling
     target_dates = []
+    customerName = ""
     if request.method=='POST':
         if request.form.get('specificDate'):
             target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
@@ -624,6 +629,10 @@ def lookup():
         elif request.form.get('startDate'):
             target_dates = [request.form.get('startDate'),request.form.get('endDate')]
             filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('viewType') == 'customer':
+            filtered_orders = filter_orders_by_customer(result_sorted, request.form.get('customerID'))
+            customerName = customers_collection.find_one({'_id':ObjectId(request.form.get('customerID',''))})['name']
+            print(customerName)
         else:
             filtered_orders = result_sorted
     else:
@@ -632,7 +641,7 @@ def lookup():
     # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
     print(len(filtered_orders))
     total_pages = math.ceil(len(filtered_orders) / 3.0)
-    return render_template('lookup.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates)
+    return render_template('lookup.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates, customers_list = list(customers_collection.find()), customerName = customerName)
 
 @app.route("/edit_po/<poID>",methods=["GET"])
 @restricted_access(['admin','orderUser','orderAdmin'])
@@ -898,6 +907,7 @@ def lookup_posted():
     page = int(request.args.get('page', 1))
     start_index = (page - 1) * 3
     end_index = start_index + 3
+    customers_collection = MClient['Customers']
     
     result = list(MClient['PostedPOs'].find())
     for order in result:
@@ -906,6 +916,7 @@ def lookup_posted():
     
     # for specific date handling
     target_dates = []
+    customerName = ""
     if request.method=='POST':
         if request.form.get('specificDate'):
             target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
@@ -913,6 +924,10 @@ def lookup_posted():
         elif request.form.get('startDate'):
             target_dates = [request.form.get('startDate'),request.form.get('endDate')]
             filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('viewType') == 'customer':
+                filtered_orders = filter_orders_by_customer(result_sorted, request.form.get('customerID'))
+                customerName = customers_collection.find_one({'_id':ObjectId(request.form.get('customerID',''))})['name']
+                print(customerName)
         else:
             filtered_orders = result_sorted
     else:
@@ -920,7 +935,7 @@ def lookup_posted():
     
     total_pages = math.ceil(len(filtered_orders)/3.0)
     # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
-    return render_template('posted_view.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
+    return render_template('posted_view.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages, customers_list = list(customers_collection.find()), customerName = customerName)
 
 
 #ENDGROUP
@@ -947,17 +962,25 @@ def create_invoice():
     # take from posted
     else:
         #copy from view posted
+        customers_collection = MClient['Customers']
         page = int(request.args.get('page', 1))
         start_index = (page - 1) * 3
         end_index = start_index + 3
         
-        result = list(MClient['PostedPOs'].find({'wasConverted':False}))
+        result = list(MClient['PostedPOs'].find({
+            '$or':[
+                {'wasConverted':False},
+                {'wasConverted':{'$exists':False}}
+            ]
+            
+            }))
         for order in result:
             order['order_total'] = calculate_order_total(order)
         result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
         
         # for specific date handling
         target_dates = []
+        customerName = ""
         if request.method=='POST':
             if request.form.get('specificDate'):
                 target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
@@ -965,6 +988,10 @@ def create_invoice():
             elif request.form.get('startDate'):
                 target_dates = [request.form.get('startDate'),request.form.get('endDate')]
                 filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+            elif request.form.get('viewType') == 'customer':
+                filtered_orders = filter_orders_by_customer(result_sorted, request.form.get('customerID'))
+                customerName = customers_collection.find_one({'_id':ObjectId(request.form.get('customerID',''))})['name']
+                print(customerName)
             else:
                 filtered_orders = result_sorted
         else:
@@ -972,7 +999,7 @@ def create_invoice():
         
         total_pages = math.ceil(len(filtered_orders)/3.0)
         # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
-        return render_template('posted_view_invoice.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
+        return render_template('posted_view_invoice.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages, customers_list = list(customers_collection.find()), customerName = customerName)
 
 def convert_from_old(order_details):
     try:
@@ -1297,6 +1324,7 @@ def view_invoices():
 
             result.append({
                 '_id': order['_id'],
+                'custID' : order.get('custID',None),
                 'customer_name': customer['name'],
                 'customer_address': customer['address'],
                 'deliveryDate': order['deliveryDate'],
@@ -1325,6 +1353,7 @@ def view_invoices():
     
     # for specific date handling
     target_dates = []
+    customerName = ""
     if request.method=='POST':
         if request.form.get('specificDate'):
             target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
@@ -1332,6 +1361,10 @@ def view_invoices():
         elif request.form.get('startDate'):
             target_dates = [request.form.get('startDate'),request.form.get('endDate')]
             filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('viewType') == 'customer':
+            filtered_orders = filter_orders_by_customer(result_sorted, request.form.get('customerID'))
+            customerName = customers_collection.find_one({'_id':ObjectId(request.form.get('customerID',''))})['name']
+            print(customerName)
         else:
             filtered_orders = result_sorted
     else:
@@ -1340,7 +1373,7 @@ def view_invoices():
     # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
     print(len(filtered_orders))
     total_pages = math.ceil(len(filtered_orders) / 3.0)
-    return render_template('lookup_invoices.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates)
+    return render_template('lookup_invoices.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], total_pages = total_pages, target_dates = target_dates, customers_list = list(customers_collection.find()), customerName = customerName)
 
 @app.route('/archive_invoice/<invoiceID>',methods=['GET','POST'])
 @restricted_access(['admin','orderAdmin'])
@@ -1455,6 +1488,7 @@ def view_archived():
     page = int(request.args.get('page', 1))
     start_index = (page - 1) * 3
     end_index = start_index + 3
+    customers_collection = MClient['Customers']
     
     result = list(MClient['ArchivedInvoices'].find())
     for order in result:
@@ -1469,6 +1503,7 @@ def view_archived():
     
     # for specific date handling
     target_dates = []
+    customerName = ""
     if request.method=='POST':
         if request.form.get('specificDate'):
             target_dates = [request.form.get('specificDate'),request.form.get('specificDate')]
@@ -1476,6 +1511,10 @@ def view_archived():
         elif request.form.get('startDate'):
             target_dates = [request.form.get('startDate'),request.form.get('endDate')]
             filtered_orders = filter_orders_by_dates(result_sorted, target_dates)
+        elif request.form.get('viewType') == 'customer':
+            filtered_orders = filter_orders_by_customer(result_sorted, request.form.get('customerID'))
+            customerName = customers_collection.find_one({'_id':ObjectId(request.form.get('customerID',''))})['name']
+            print(customerName)
         else:
             filtered_orders = result_sorted
     else:
@@ -1483,7 +1522,7 @@ def view_archived():
     
     total_pages = math.ceil(len(filtered_orders)/3.0)
     # pprint.PrettyPrinter(width=50).pprint(filtered_orders)
-    return render_template('archived_view_invoice.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages)
+    return render_template('archived_view_invoice.html',data = filtered_orders[start_index:end_index], page=page, user_type = session['role'], target_dates = target_dates, total_pages = total_pages, customers_list = list(customers_collection.find()), customerName = customerName)
 
 @app.route('/print_invoice/<invoiceID>',methods=['GET'])
 @restricted_access(['admin','invoiceAdmin','invoiceUser'])
@@ -2262,7 +2301,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        user = next((user for user in users if user == username and users[user]['password'] == password), None)
+        user = next((user for user in users if user.upper() == username.upper() and users[user]['password'] == password), None)
 
         if user:
             session['username'] = user

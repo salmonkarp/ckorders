@@ -116,7 +116,7 @@
                     </tr>
                     <tr>
                         <td>Delivery Address</td>
-                        <td><input type="text" name="address" class="conditionalInput"></td>
+                        <td><input type="text" name="address" class="conditionalInput" value="-"></td>
                     </tr>
                 </table>
             </div>
@@ -252,6 +252,7 @@
             inputElements[i].required = inputNames.includes(inputElements[i].name) && radio.checked;
         }
     }
+    
 
     // to show options of new or existing customer
     function showOptions(customerType) {
@@ -273,10 +274,12 @@
         if (checkbox.checked) {
             div.style.display = 'block';
             quantityInput.style.display = 'block';
+            quantityInput.required = true; // Set the required attribute
             toggleCustomPriceInput(div.querySelector('select'), customPriceInput);
         } else {
             div.style.display = 'none';
             quantityInput.style.display = 'none';
+            quantityInput.required = false; // Remove the required attribute
             customPriceInput.style.display = 'none';
         }
     }

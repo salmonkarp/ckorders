@@ -198,11 +198,14 @@
 <body>  
     <!-- Date selection -->
     <form action="/viewInvoices" method="POST" class="top">
-        <h3>Active Invoices</h3>
+        <h3>Invoices</h3>
         <p>
             Page {{page}} of {{total_pages}} <br>
             {% if target_dates != [] %}
             Displaying invoices from {{target_dates[0]}} to {{target_dates[1]}}
+            {% endif %}
+            {% if customerName != '' %}
+            Displaying invoices from {{customerName}}
             {% endif %}
         </p>
         <label for="viewType">Select view type:</label>
@@ -210,7 +213,8 @@
             <option value="" disabled selected>Select an option</option>
             <option value="specificDate">View from specific date</option>
             <option value="dateRange">View from date range</option>
-            <option value="allOrders">Display all invoices</option>
+            <option value="customer">Pick specific customer</option>
+            <option value="allOrders">Display all orders</option>
         </select>
 
         <div id="specificDate" style="display: none;">
@@ -228,8 +232,18 @@
             <input type="date" id="endDateInput" name="endDate" style="margin-left:5px">
         </div>
 
+        <div id="customer" style="display: none;">
+            <br>
+            <label for="selectCustomer">Select Customer</label>
+            <select name="customerID">
+                {% for customer in customers_list %}
+                <option value="{{customer['_id']}}">{{customer['name']}}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <br><br>
-        <button type="submit" class="back">View Invoices</button>
+        <button type="submit">View Invoices</button>
     </form>
     
     <!-- Order Display -->
@@ -356,16 +370,24 @@
     document.getElementById('viewType').addEventListener('change', function() {
         var specificDateDiv = document.getElementById('specificDate');
         var dateRangeDiv = document.getElementById('dateRange');
+        var customerSelectDiv = document.getElementById('customer')
 
         if (this.value === 'specificDate') {
             specificDateDiv.style.display = 'block';
             dateRangeDiv.style.display = 'none';
+            customerSelectDiv.style.display = 'none';
         } else if (this.value === 'dateRange') {
             specificDateDiv.style.display = 'none';
             dateRangeDiv.style.display = 'block';
+            customerSelectDiv.style.display = 'none';
+        } else if (this.value === 'customer') {
+            customerSelectDiv.style.display = 'block'
+            specificDateDiv.style.display = 'none';
+            dateRangeDiv.style.display = 'none';
         } else {
             specificDateDiv.style.display = 'none';
             dateRangeDiv.style.display = 'none';
+            customerSelectDiv.style.display = 'none';
         }
     });
     

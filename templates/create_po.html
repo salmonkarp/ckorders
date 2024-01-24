@@ -115,7 +115,7 @@
                     </tr>
                     <tr>
                         <td>Delivery Address</td>
-                        <td><input type="text" name="address"></td>
+                        <td><input type="text" name="address" value="-"></td>
                     </tr>
                 </table>
             </div>
@@ -271,10 +271,12 @@
         if (checkbox.checked) {
             div.style.display = 'block';
             quantityInput.style.display = 'block';
+            quantityInput.required = true; // Set the required attribute
             toggleCustomPriceInput(div.querySelector('select'), customPriceInput);
         } else {
             div.style.display = 'none';
             quantityInput.style.display = 'none';
+            quantityInput.required = false; // Remove the required attribute
             customPriceInput.style.display = 'none';
         }
     }

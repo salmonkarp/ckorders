@@ -113,7 +113,7 @@
             
             <!-- Choose from either product or hampers -->
             <label>
-                <input type="radio" name="customer-type" value="new" onclick="showOptions('current'); toggleInput(this, 'customer_name', 'address')" required> Edit Current Customer
+                <input type="radio" name="customer-type" value="new" onclick="showOptions('current'); toggleInput(this, 'customer_name', 'address')" required checked> Edit Current Customer
             </label>
             <label>
                 <input type="radio" name="customer-type" value="existing" onclick="showOptions('existing'); toggleInput(this, 'existing_customer_id')" required> Move to Existing Customer
@@ -311,10 +311,12 @@
         if (checkbox.checked) {
             div.style.display = 'block';
             quantityInput.style.display = 'block';
+            quantityInput.required = true; // Set the required attribute
             toggleCustomPriceInput(div.querySelector('select'), customPriceInput);
         } else {
             div.style.display = 'none';
             quantityInput.style.display = 'none';
+            quantityInput.required = false; // Remove the required attribute
             customPriceInput.style.display = 'none';
         }
     }

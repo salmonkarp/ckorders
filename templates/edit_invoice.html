@@ -12,7 +12,7 @@
 {% extends 'base_admin.html' %}
 {% endif %}
 
-{% block title %}Edit PO{% endblock %}
+{% block title %}Edit Invoice{% endblock %}
 
 {% block content %}
 <head>
@@ -104,7 +104,7 @@
 <body>
     <form action="/edit_invoice_submit" enctype="multipart/form-data" method="post">
         <div class="center_form">
-            <h2>Edit PO</h2>
+            <h2>Edit Invoice</h2>
 
             <p>
                 Invoice ID: {{ order_data['_id'] }} <br>
@@ -301,10 +301,12 @@
         if (checkbox.checked) {
             div.style.display = 'block';
             quantityInput.style.display = 'block';
+            quantityInput.required = true; // Set the required attribute
             toggleCustomPriceInput(div.querySelector('select'), customPriceInput);
         } else {
             div.style.display = 'none';
             quantityInput.style.display = 'none';
+            quantityInput.required = false; // Remove the required attribute
             customPriceInput.style.display = 'none';
         }
     }

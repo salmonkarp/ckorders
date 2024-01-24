@@ -203,27 +203,45 @@
             {% if target_dates != [] %}
             Displaying orders from {{target_dates[0]}} to {{target_dates[1]}}
             {% endif %}
+            {% if customerName != '' %}
+            Displaying orders from {{customerName}}
+            {% endif %}
         </p>
         <label for="viewType">Select view type:</label>
         <select id="viewType" name="viewType" required>
             <option value="" disabled selected>Select an option</option>
             <option value="specificDate">View from specific date</option>
             <option value="dateRange">View from date range</option>
+            <option value="customer">Pick specific customer</option>
             <option value="allOrders">Display all orders</option>
         </select>
 
         <div id="specificDate" style="display: none;">
+            <br>
             <label for="specificDateInput">Enter specific date:</label>
             <input type="date" id="specificDateInput" name="specificDate">
         </div>
 
         <div id="dateRange" style="display: none;">
+            <br>
             <label for="startDateInput">Start Date:</label>
             <input type="date" id="startDateInput" name="startDate">
+            <br>
             <label for="endDateInput">End Date:</label>
-            <input type="date" id="endDateInput" name="endDate">
+            <input type="date" id="endDateInput" name="endDate" style="margin-left:5px">
         </div>
 
+        <div id="customer" style="display: none;">
+            <br>
+            <label for="selectCustomer">Select Customer</label>
+            <select name="customerID">
+                {% for customer in customers_list %}
+                <option value="{{customer['_id']}}">{{customer['name']}}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <br><br>
         <button type="submit">View Orders</button>
     </form>
     
@@ -351,16 +369,24 @@
     document.getElementById('viewType').addEventListener('change', function() {
         var specificDateDiv = document.getElementById('specificDate');
         var dateRangeDiv = document.getElementById('dateRange');
+        var customerSelectDiv = document.getElementById('customer')
 
         if (this.value === 'specificDate') {
             specificDateDiv.style.display = 'block';
             dateRangeDiv.style.display = 'none';
+            customerSelectDiv.style.display = 'none';
         } else if (this.value === 'dateRange') {
             specificDateDiv.style.display = 'none';
             dateRangeDiv.style.display = 'block';
+            customerSelectDiv.style.display = 'none';
+        } else if (this.value === 'customer') {
+            customerSelectDiv.style.display = 'block'
+            specificDateDiv.style.display = 'none';
+            dateRangeDiv.style.display = 'none';
         } else {
             specificDateDiv.style.display = 'none';
             dateRangeDiv.style.display = 'none';
+            customerSelectDiv.style.display = 'none';
         }
     });
     
