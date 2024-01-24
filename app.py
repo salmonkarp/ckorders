@@ -68,8 +68,11 @@ def send_whatsapp_message(po):
 
 # objects creation
 app = Flask(__name__)
-app.secret_key = os.environ["SECRETKEY"]
+app.secret_key = 'bobby'
+os.environ["LAST_MODIFIED"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+os.environ["TELEGRAM_API_KEY"] = "6926369218:AAFX6xFgIk6Wzt4K0-q-dDozOts0QCvjIx0"
+os.environ["MONGOKEY"] = "8EGuh1hHtHosYg5U"
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 MClient = pymongo.MongoClient(MCString)['CK']
@@ -1008,10 +1011,10 @@ def convert_from_old(order_details):
         customers_collection = MClient['Customers']
         products_collection = MClient['Products']
         hampers_collection = MClient['Hampers']
-        # print('test_top')
+        
         #check customer data
         real_customer_data = dict(customers_collection.find_one({'_id':order_details['custID']}))
-        # print(real_customer_data)
+        
         if real_customer_data['name'] != order_details['customer_name']:
             raise ValueError('name')
         elif real_customer_data['address'] != order_details['customer_address']:
@@ -1019,28 +1022,29 @@ def convert_from_old(order_details):
         
         #check products
         for product in order_details['products']:
-            # print(product)
             real_product_data = dict(products_collection.find_one({'_id':product['_id']}))
-            # print(real_product_data)
             if real_product_data['name'] != product['product_name']:
                 raise ValueError('product name')
             
-            # print('cust true2')
             product_prices_dict = {}
             for price in real_product_data['prices']:
                 product_prices_dict[price['name']] = price['value']
             
-            if product['price_type'] not in product_prices_dict.keys():
+            if product['price_type'] not in product_prices_dict.keys() and product['price_type'] != 'custom':
                 raise ValueError('price_type not exist')
-            if product_prices_dict[product['price_type']] != product['price_value']:
+            if product['price_type'] != 'custom' and product_prices_dict[product['price_type']] != product['price_value']:
                 raise ValueError('price type/value mismatch')
             
-            products_updated.append({
+            product_object = {
                 'product_id':real_product_data['_id'],
                 'quantity':product['quantity'],
                 'price_type':product['price_type'],
                 'discount':product.get('discount',0.0)
-            })
+            }
+            if product['price_type'] == 'custom':
+                product_object['custom_price'] = product['price_value']
+            
+            products_updated.append(product_object)
         
         #check hampers
         for product in order_details['hampers']:
@@ -1052,17 +1056,21 @@ def convert_from_old(order_details):
             for price in real_product_data['prices']:
                 product_prices_dict[price['name']] = price['value']
             
-            if product['price_type'] not in product_prices_dict.keys():
+            if product['price_type'] not in product_prices_dict.keys() and product['price_type'] != 'custom':
                 raise ValueError('price_type not exist')
-            if product_prices_dict[product['price_type']] != product['price_value']:
+            if product['price_type'] != 'custom' and product_prices_dict[product['price_type']] != product['price_value']:
                 raise ValueError('price type/value mismatch')
             
-            hampers_updated.append({
+            hamper_object = {
                 'product_id':real_product_data['_id'],
                 'quantity':product['quantity'],
                 'price_type':product['price_type'],
                 'discount':product.get('discount',0.0)
-            })
+            }
+            if product['price_type'] == 'custom':
+                hamper_object['custom_price'] = product['price_value']
+            hampers_updated.append(hamper_object)            
+            
         
         invoice_object = {
             'po_id':order_details['_id'],
@@ -1075,6 +1083,7 @@ def convert_from_old(order_details):
         }
         
         return invoice_object
+    
     except Exception as e:
         return e
 
@@ -1082,13 +1091,27 @@ def convert_from_new(order_details):
     products_updated, hampers_updated = [], []
     
     #check products
-    for product in order_details['products'] + order_details['hampers']:
-        products_updated.append({
+    for product in order_details['products']:
+        product_object = {
             'product_id':product['_id'],
             'quantity':product['quantity'],
             'price_type':product['price_type'],
             'discount':product.get('discount',0.0)
-        })
+        }
+        if product['price_type'] == 'custom':
+            product_object['custom_price'] = product['price_value']
+        products_updated.append(product_object)
+    
+    for hamper in order_details['hampers']:
+        hamper_object = {
+            'product_id':hamper['_id'],
+            'quantity':hamper['quantity'],
+            'price_type':hamper['price_type'],
+            'discount':hamper.get('discount',0.0)
+        }
+        if hamper['price_type'] == 'custom':
+            hamper_object['custom_price'] = hamper['price_value']
+        hampers_updated.append(product_object)
     
     invoice_object = {
         'po_id':order_details['_id'],

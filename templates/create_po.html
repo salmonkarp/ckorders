@@ -213,7 +213,7 @@
                                         <label>Choose Price</label> <br>
                                     </td>
                                     <td>
-                                        <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="width:100%; font-size: 14px;">
+                                        <select name="{{ hamper._id }}_price_type" onchange="toggleCustomPriceInput(this, document.getElementById('{{ hamper._id }}_custom_price'))"  style="width:100%;">
                                             {% for price in hamper.prices %}
                                                 <option value="{{ price.name }}">{{ price.name }}: {{ price.value | format_currency }}</option>
                                             {% endfor %}
