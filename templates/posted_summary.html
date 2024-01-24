@@ -10,7 +10,7 @@
 {% extends 'base_admin.html' %}
 {% endif %}
 
-{% block title %}Summary{% endblock %}
+{% block title %}Posted PO Summary{% endblock %}
 
 {% block content %}
 <head>
@@ -61,8 +61,8 @@
 </head>
 <body> 
     <!-- Date selection -->
-    <form action="/summary" method="POST">
-        <h3>Summary of Archived Invoices</h3>
+    <form action="/summary_posted" method="POST">
+        <h3>Summary of Posted POs</h3>
         <table>
             <tr>
                 <td><label for="viewType">Select summary type:</label></td>

@@ -69,6 +69,7 @@ def send_whatsapp_message(po):
 # objects creation
 app = Flask(__name__)
 app.secret_key = os.environ["SECRETKEY"]
+
 database_key = os.environ["MONGOKEY"]
 MCString = "mongodb+srv://salmonkarp:" + database_key + "@cookieskingdomdb.gq6eh6v.mongodb.net/"
 MClient = pymongo.MongoClient(MCString)['CK']
@@ -1941,7 +1942,7 @@ def summary():
         CustomersData = MClient['Customers']
         ProductsDataRaw = MClient['Products']
         HampersData = MClient['Hampers']
-        
+        print(request.form.get('viewType'))
         # sorting by products, combined with hampers
         if request.form.get('viewType') == 'productSortCombined':
             OrderData = MClient['ArchivedInvoices'].find(
@@ -2065,7 +2066,7 @@ def summary():
             return render_template('summary_product.html',data=summary_data, startDate = startDate, endDate = endDate, additional_details = additional_details, user_type = session['role'])
          
         # sort by customer, archived
-        else:
+        elif request.form.get('viewType') == 'customerSort':
             OrderData = MClient['ArchivedInvoices'].find(
                 {
                     'deliveryDate':{
@@ -2132,6 +2133,27 @@ def summary():
             
             return render_template('summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate, user_type = session['role'], broken_orders = broken_orders)
         
+        #totals
+        else:
+            OrderData = list(MClient['ArchivedInvoices'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            ))
+            OrderData = sorted(OrderData, key=lambda x:datetime.strptime(x['deliveryDate'],"%Y-%m-%d"))
+            sum_value = 0.0
+            for order in OrderData:
+                if order.get('invoiceType',None) == 'broken':
+                    order['products'] = order['items']
+                    order['hampers'] = []
+                order_total = calculate_order_total(order)
+                order['order_total'] = order_total - (order_total * order.get('orderDiscount',0.0) * 0.01)
+                sum_value += order_total
+            return render_template("summary_totals.html",user_type = session['role'], data = OrderData, startDate = startDate, endDate = endDate, sum_value = sum_value)
+
 @app.route('/view_broken',methods=["POST"])
 @restricted_access(['admin','invoiceAdmin','orderAdmin'])
 def view_broken():
@@ -2148,6 +2170,214 @@ def view_broken():
         order['order_total'] = calculate_order_total(order)
     result_sorted = sorted(result, key=lambda x: datetime.strptime(x['deliveryDate'], '%Y-%m-%d'))
     return render_template('view_broken.html',data = result_sorted, user_type = session['role'])
+
+@app.route('/summary_posted',methods=["GET","POST"])
+@restricted_access(['admin','invoiceAdmin','orderAdmin'])
+def summary_posted():
+    if request.method == "GET":
+            return render_template('posted_summary.html', user_type = session['role'])
+    else:
+        startDate = request.form.get('startDate')
+        endDate = request.form.get('endDate')
+        CustomersData = MClient['Customers']
+        ProductsDataRaw = MClient['Products']
+        HampersData = MClient['Hampers']
+        print(request.form.get('viewType'))
+        # sorting by products, combined with hampers
+        if request.form.get('viewType') == 'productSortCombined':
+            OrderData = MClient['PostedPOs'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            )
+            
+            ProductsData = ProductsDataRaw.find()
+            product_totals = {}
+            customers_list = []
+            order_count = 0
+            for order in OrderData:
+                order_count += 1
+                customer_data = dict(CustomersData.find_one({'_id':order['custID']}))
+                if customer_data['name'] not in customers_list:
+                    customers_list.append(customer_data['name'])
+                for product in order.get('products',[]):
+                    product_id = str(product['_id'])
+                    quantity = product['quantity']
+                    product_totals[product_id] = product_totals.get(product_id, 0) + quantity
+                for hamper in order.get('hampers',[]):
+                    hamper_id = str(hamper['_id'])
+                    hamper_quantity = hamper['quantity']
+                    hamper_details = HampersData.find_one({'_id':ObjectId(hamper_id)})
+                    
+                    if hamper_details:
+                        hamper_products = hamper_details['items']
+                    else:
+                        hamper_products = []
+                        
+                    # print(hamper_products)
+                    for product in hamper_products:
+                        product_id = str(product['product_id'])
+                        product_quantity = product['quantity']
+                        product_totals[product_id] = product_totals.get(product_id, 0) + (product_quantity * hamper_quantity)
+                        
+                    
+            summary_data = []
+            for product in ProductsData:
+                product_id = str(product['_id'])
+                product_name = product['name']
+                total_quantity = product_totals.get(product_id,0)
+                summary_data.append(
+                    {
+                        'name':product_name,
+                        'total_quantity':total_quantity,
+                        'current_stock':product['currentStock']
+                    }
+                )
+            
+            additional_details = {
+                "order_count" : order_count,
+                "customers_list":customers_list,
+            }
+            return render_template('posted_summary_product.html',data=summary_data, startDate = startDate, endDate = endDate, additional_details = additional_details, user_type = session['role'])
+        
+        # sorting by products, separate from hampers
+        elif request.form.get('viewType') == 'productSort':
+            OrderData = MClient['PostedPOs'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            )
+            ProductsData = ProductsDataRaw.find()
+            product_totals = {}
+            customers_list = []
+            order_count = 0
+            for order in OrderData:
+                order_count += 1
+                customer_data = dict(CustomersData.find_one({'_id':order['custID']}))
+                if customer_data['name'] not in customers_list:
+                    customers_list.append(customer_data['name'])
+                
+                for product in order.get('products',[]):
+                    product_id = str(product['_id'])
+                    quantity = product['quantity']
+                    product_totals[product_id] = product_totals.get(product_id, 0) + quantity
+                
+                for hamper in order.get('hampers',[]):
+                    hamper_id = str(hamper['_id'])
+                    hamper_quantity = hamper['quantity']
+                    product_totals[hamper_id] = product_totals.get(hamper_id, 0) + hamper_quantity
+                        
+            print(product_totals)
+            summary_data = []
+            for product in list(ProductsData) + list(HampersData.find()):
+                product_id = str(product['_id'])
+                product_name = product['name']
+                total_quantity = product_totals.get(product_id,0)
+                if total_quantity <= 0:
+                    continue
+                summary_data.append(
+                    {
+                        'name':product_name,
+                        'total_quantity':total_quantity,
+                        'current_stock':product.get('currentStock',0)
+                    }
+                )
+            print(summary_data)
+            
+            additional_details = {
+                "order_count" : order_count,
+                "customers_list":customers_list,
+            }
+            return render_template('posted_summary_product.html',data=summary_data, startDate = startDate, endDate = endDate, additional_details = additional_details, user_type = session['role'])
+         
+        # sort by customer, archived
+        elif request.form.get('viewType') == 'customerSort':
+            OrderData = MClient['PostedPOs'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            )
+            customer_totals = {}
+            ProductsData = ProductsDataRaw.find()
+                
+            # calculating quantities of products and hampers (seperately) for each customer
+            broken_orders = []
+            for order in OrderData:
+                customer_key = str(order['custID']) + order['customer_name']
+                tmp_order_total = 0.0
+                
+                if customer_key not in customer_totals.keys():
+                    customer_totals[customer_key] = {
+                        'customer_name':order['customer_name'],
+                        'customer_address':order['customer_address'],
+                        'products_quantity':{},
+                        'total_spent':0.0
+                    }
+                
+                for product in order.get('products',[]):
+                    product_id = str(product['_id'])
+                    product_name = product['product_name']
+                    product_key = product_id + '&%$' + product_name
+                    
+                    quantity = product.get('quantity',0)
+                    price_name = product['price_type']
+                    price_value = product['price_value']
+                    product_discount = product.get('discount',0)
+                    tmp_price = price_value * (1 - (product_discount * 0.01))
+                    tmp_order_total = tmp_order_total + (quantity * tmp_price)
+                    
+                    customer_totals[customer_key]['products_quantity'][product_key] = customer_totals[customer_key]['products_quantity'].get(product_key, 0) + quantity
+                    
+                
+                for hamper in order.get('hampers',[]):
+                    hamper_id = str(hamper['_id'])
+                    hamper_name = hamper['hamper_name']
+                    hamper_key = hamper_id + '&%$' + hamper_name
+
+                    quantity = hamper['quantity']
+                    price_name = hamper['price_type']
+                    price_value = hamper['price_value']
+                    hamper_discount = hamper.get('discount',0)
+                    tmp_price = price_value * (1 - (hamper_discount * 0.01))
+                    tmp_order_total = tmp_order_total + (quantity * tmp_price)
+                    
+                    customer_totals[customer_key]['products_quantity'][hamper_key] = customer_totals[customer_key]['products_quantity'].get(hamper_key, 0) + quantity
+                    
+                customer_totals[customer_key]['total_spent'] += tmp_order_total * (1 - (order['orderDiscount'] * 0.01))
+
+            customer_totals = customer_totals.items()
+            customer_totals = sorted(customer_totals, key=lambda x:x[1]['total_spent'], reverse=True)
+            for customer in customer_totals:
+                customer[1]['products_quantity'] = dict(sorted(customer[1]['products_quantity'].items(), key=lambda x:x[1], reverse=True))
+            
+            return render_template('posted_summary_customer.html',data=customer_totals, startDate = startDate, endDate = endDate, user_type = session['role'], broken_orders = broken_orders)
+        
+        #totals
+        else:
+            OrderData = list(MClient['PostedPOs'].find(
+                {
+                    'deliveryDate':{
+                        '$gte':startDate,
+                        '$lte':endDate
+                    }
+                }
+            ))
+            OrderData = sorted(OrderData, key=lambda x:datetime.strptime(x['deliveryDate'],"%Y-%m-%d"))
+            sum_value = 0.0
+            for order in OrderData:
+                order_total = calculate_order_total(order)
+                order['order_total'] = order_total - (order_total * order.get('orderDiscount',0.0) * 0.01)
+                sum_value += order_total
+            return render_template("posted_summary_totals.html",user_type = session['role'], data = OrderData, startDate = startDate, endDate = endDate, sum_value = sum_value)
 
 #ENDGROUP: SUMMARY
 

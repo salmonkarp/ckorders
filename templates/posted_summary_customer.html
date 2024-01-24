@@ -12,7 +12,7 @@
 {% extends 'base_admin.html' %}
 {% endif %}
 
-{% block title %}Archived Invoice Summary (Customer){% endblock %}
+{% block title %}Posted Orders Summary (by customer){% endblock %}
 
 {% block content %}
 <head>
@@ -70,13 +70,10 @@
 </head>
 <body>
     <div class="order-container">
-        <h3>Customer Summary</h3>
+        <h3>Posted PO Summary (by customer)</h3>
         <p>
             Start Date: {{startDate}} <br>
             End Date: {{endDate}} <br>
-            {% if broken_data | length > 0 %}
-            Broken data was detected. Click the button at the end of the page to view. <br>
-            {% endif %}
         </p>
         <table>
             <tr>
@@ -109,17 +106,13 @@
             </tr>
             {% endfor %}
         </table>
-        <form action="/view_broken" method="post" enctype="multipart/form-data">
-            <button type="submit" class="back">View Broken Orders</button>
-            <input value="{{broken_orders}}" name = "broken_orders" hidden>
-        </form>
         <br>
         <button onclick="goBack()" class="back">Back</a>
     </div>
 </body>
 <script>
     function goBack() {
-        window.location.href = '/summary';
+        window.location.href = '/summary_posted';
     }
 </script>
 {% endblock %}

@@ -179,7 +179,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         @media only screen and (max-width: 768px) {
-            body, a.back, input, input[type="submit"], button, select {
+            body, a.back, input, input[type="submit"], button, select, a {
                 font-size:2vw;
             }
             /* Adjust styles for smaller screens */
@@ -189,6 +189,19 @@
             }
 
             /* Add more responsive styles as needed */
+        }
+        .center-link {
+            text-decoration: none;
+            background-color: #04AA6D;
+            color: #fff;
+            width:20%;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            border:none;
+            display: block;
+            text-align: center;
         }
     </style>
 </head>
@@ -241,7 +254,8 @@
 
         <br><br>
         <button type="submit">View Posted Orders</button>
-    </form>
+    </form><br>
+    <a href="/summary_posted" class="center-link" style="margin:auto">Summary of Posted Orders</a>
     
     <!-- Order Display -->
     {% for po in data %}
