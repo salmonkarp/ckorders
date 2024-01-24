@@ -200,7 +200,7 @@
         <p>
             Page {{page}} of {{total_pages}} <br>
             {% if target_dates != [] %}
-            Displaying invoices from {{target_dates[0]}} to {{target_dates[1]}}
+            Displaying posted orders from {{target_dates[0]}} to {{target_dates[1]}}
             {% endif %}
             {% if customerName != '' %}
             Displaying invoices from {{customerName}}
@@ -241,7 +241,7 @@
         </div>
 
         <br><br>
-        <button type="submit">View Invoices</button>
+        <button type="submit">View Posted Orders</button>
     </form>
     
     <!-- Order Display -->
