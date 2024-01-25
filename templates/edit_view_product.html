@@ -163,7 +163,7 @@
                 <a href="/edit_product?page={{page-1}}">Previous</a>
             {% endif %}
         
-            {% if productsList | length == total_pages %}
+            {% if page != total_pages %}
                 <a href="/edit_product?page={{page+1}}">Next</a>
             {% endif %}
         </div>

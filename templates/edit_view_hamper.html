@@ -221,7 +221,7 @@
                 <a href="/edit_hamper?page={{page-1}}">Previous</a>
             {% endif %}
         
-            {% if hampersList | length == total_pages %}
+            {% if page !=  total_pages %}
                 <a href="/edit_hamper?page={{page+1}}">Next</a>
             {% endif %}
         </div>
